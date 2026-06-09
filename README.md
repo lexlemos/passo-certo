@@ -28,7 +28,7 @@ Antes de começar, certifique-se de ter instalado em sua máquina:
 ### 1. Clonar o Repositório
 Abra o terminal e clone a branch de desenvolvimento (`develop`):
 \`\`\`bash
-git clone -b develop https://github.com/SUA_ORGANIZACAO/passo-certeiro.git
+git clone -b develop https://github.com/lexlemos/passo-certeiro.git
 cd passo-certeiro
 \`\`\`
 
