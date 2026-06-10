@@ -13,7 +13,7 @@ O projeto foi construído utilizando as melhores práticas de engenharia de soft
 * **Framework:** [Flutter](https://flutter.dev/) (Dart)
 * **Padrão Arquitetural:** Clean Architecture (Isolamento de Camadas)
 * **Abordagem de Design:** Domain-Driven Design (DDD) focado no domínio da acessibilidade.
-* **Gerenciamento de Estado:** Riverpod
+* **Gerenciamento de Estado:** BLoC
 
 ---
 

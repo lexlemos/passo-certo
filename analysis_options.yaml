@@ -1,1 +1,9 @@
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    - always_declare_return_types # Obriga a declarar o tipo de retorno das funções
+    - avoid_empty_else            # Evita elses vazios
+    - prefer_const_constructors   # Performance: obriga o uso de const onde for possível
+    - avoid_print                 # Proíbe 'print()' em produção (obriga a usar logs tratados)
+    - file_names                  # Obriga o padrão snake_case para nome de arquivos
