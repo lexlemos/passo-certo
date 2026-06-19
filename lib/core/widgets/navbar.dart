@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Um componente de barra de navegação inferior reutilizável e acessível.
-///
-/// Este widget é totalmente desacoplado da lógica de roteamento e depende
-/// de um componente pai para fornecer o [currentIndex] atual e tratar
-/// o evento [onTap].
+/// Um componente de barra de navegação inferior reutilizável e acessível com 4 abas.
 class NavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -63,9 +59,19 @@ class NavBar extends StatelessWidget {
           ),
           BottomNavigationBarItem(
             icon: Semantics(
+              label: 'Aba Comunidade',
+              hint: 'Toque duas vezes para navegar para a comunidade',
+              selected: currentIndex == 2,
+              button: true,
+              child: const Icon(Icons.people),
+            ),
+            label: 'Comunidade',
+          ),
+          BottomNavigationBarItem(
+            icon: Semantics(
               label: 'Aba Perfil',
               hint: 'Toque duas vezes para acessar suas informações de perfil',
-              selected: currentIndex == 2,
+              selected: currentIndex == 3,
               button: true,
               child: const Icon(Icons.person),
             ),
