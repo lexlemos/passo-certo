@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_button.dart';
@@ -75,16 +76,13 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
                   return Column(
                     children: List.generate(state.routes.length, (index) {
                       final route = state.routes[index];
-                      final isHighAcc = route.isHighlyAccessible;
-                      final accPercentage = (route.accessibilityScore * 100).toStringAsFixed(0);
-                      final accLevel = isHighAcc ? 'Alto ($accPercentage%)' : 'Médio ($accPercentage%)';
 
                       return RouteOptionCard(
                         title: route.title,
                         time: route.estimatedTime,
                         distance: route.distance,
                         isRecommended: route == state.recommendedRoute,
-                        accessibilityLevel: accLevel,
+                        accessibilityScore: route.accessibilityScore,
                         tags: route.characteristics,
                         isSelected: state.selectedRouteIndex == index,
                         onTap: () => context
@@ -336,7 +334,7 @@ class RouteOptionCard extends StatelessWidget {
   final String time;
   final String distance;
   final bool isRecommended;
-  final String accessibilityLevel;
+  final double accessibilityScore;
   final List<String> tags;
   final VoidCallback onTap;
   final bool isSelected;
@@ -347,7 +345,7 @@ class RouteOptionCard extends StatelessWidget {
     required this.time,
     required this.distance,
     required this.isRecommended,
-    required this.accessibilityLevel,
+    required this.accessibilityScore,
     required this.tags,
     required this.onTap,
     this.isSelected = false,
@@ -356,13 +354,15 @@ class RouteOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isHighAccessibility = accessibilityLevel.contains('Alto');
+    final isHighAccessibility = accessibilityScore >= 0.8;
+    final accPercentage = (accessibilityScore * 100).toStringAsFixed(0);
+    final accLevel = isHighAccessibility ? 'Alto ($accPercentage%)' : 'Médio ($accPercentage%)';
 
     return BaseCard(
       margin: const EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.zero,
       semanticLabel:
-          "Rota $title. Tempo estimado $time. Distância $distance. Nível de acessibilidade $accessibilityLevel. Toque duas vezes para selecionar.",
+          "Rota $title. Tempo estimado $time. Distância $distance. Nível de acessibilidade $accLevel. Toque duas vezes para selecionar.",
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -447,12 +447,12 @@ class RouteOptionCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Acessibilidade: $accessibilityLevel',
+              'Acessibilidade: $accLevel',
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 4),
             LinearProgressIndicator(
-              value: isHighAccessibility ? 0.95 : 0.60,
+              value: accessibilityScore,
               backgroundColor: AppTheme.softGreyBg,
               color: isHighAccessibility ? AppTheme.mintGreen : Colors.orange,
             ),
@@ -470,8 +470,52 @@ class RouteMapSection extends StatefulWidget {
   State<RouteMapSection> createState() => _RouteMapSectionState();
 }
 
+enum _LocationPermissionStatus { checking, granted, denied }
+
 class _RouteMapSectionState extends State<RouteMapSection> {
   GoogleMapController? _mapController;
+  _LocationPermissionStatus _permissionStatus = _LocationPermissionStatus.checking;
+
+  /// Marcadores estáticos declarados como final — inicializados uma única vez.
+  static final Set<Marker> _staticMarkers = {
+    const Marker(
+      markerId: MarkerId('origin'),
+      position: LatLng(-10.9472, -37.0731),
+      infoWindow: InfoWindow(title: 'Origem (CCET UFS)'),
+    ),
+    const Marker(
+      markerId: MarkerId('destination'),
+      position: LatLng(-10.9350, -37.0650),
+      infoWindow: InfoWindow(title: 'Destino (Terminal D.I.A.)'),
+    ),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndRequestLocationPermission();
+  }
+
+  /// Verifica e, se necessário, solicita permissão de localização.
+  /// Atualiza [_permissionStatus] para controlar qual UI exibir.
+  Future<void> _checkAndRequestLocationPermission() async {
+    var status = await Permission.locationWhenInUse.status;
+
+    if (status.isGranted) {
+      if (mounted) setState(() => _permissionStatus = _LocationPermissionStatus.granted);
+      return;
+    }
+
+    // Solicita ao usuário (exibe o diálogo do SO apenas na primeira vez)
+    status = await Permission.locationWhenInUse.request();
+
+    if (!mounted) return;
+    setState(() {
+      _permissionStatus = status.isGranted
+          ? _LocationPermissionStatus.granted
+          : _LocationPermissionStatus.denied;
+    });
+  }
 
   @override
   void dispose() {
@@ -486,29 +530,84 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           previous.routes != current.routes ||
           previous.selectedRouteIndex != current.selectedRouteIndex,
       builder: (context, state) {
-        final markers = {
-          const Marker(
-            markerId: MarkerId('origin'),
-            position: LatLng(-10.9472, -37.0731),
-            infoWindow: InfoWindow(title: 'Origem (CCET UFS)'),
+        return Semantics(
+          label: "Mapa interativo exibindo o trajeto selecionado. Nível de acessibilidade codificado por cores no mapa.",
+          child: Container(
+            height: 400,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.mintGreen.withValues(alpha: 0.5)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _buildMapContent(state),
+            ),
           ),
-          const Marker(
-            markerId: MarkerId('destination'),
-            position: LatLng(-10.9350, -37.0650),
-            infoWindow: InfoWindow(title: 'Destino (Terminal D.I.A.)'),
-          ),
-        };
+        );
+      },
+    );
+  }
 
+  Widget _buildMapContent(RoutePlanningState state) {
+    switch (_permissionStatus) {
+      case _LocationPermissionStatus.checking:
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Verificando permissão de localização...'),
+            ],
+          ),
+        );
+
+      case _LocationPermissionStatus.denied:
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.location_off, size: 48, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text(
+                  'Permissão de localização necessária',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Para exibir sua posição no mapa, permita o acesso à localização nas configurações.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // Abre as configurações do app se a permissão foi negada permanentemente
+                    final opened = await openAppSettings();
+                    if (!opened && mounted) {
+                      _checkAndRequestLocationPermission();
+                    }
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Abrir Configurações'),
+                ),
+              ],
+            ),
+          ),
+        );
+
+      case _LocationPermissionStatus.granted:
         final polylines = state.routes.asMap().entries.map((entry) {
           final index = entry.key;
           final route = entry.value;
-
           final isSelected = index == state.selectedRouteIndex;
           final isRec = route.accessibilityScore >= 0.8;
           final latLngWaypoints = route.waypoints
               .map((coord) => LatLng(coord.latitude, coord.longitude))
               .toList();
-
           return Polyline(
             polylineId: PolylineId(route.title),
             color: isSelected
@@ -521,51 +620,34 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           );
         }).toSet();
 
-        return Semantics(
-          label: "Mapa interativo exibindo o trajeto selecionado. Nível de acessibilidade codificado por cores no mapa.",
-          child: Container(
-            height: 400,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.mintGreen.withValues(alpha: 0.5)),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                children: [
-                  GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: LatLng(-10.9472, -37.0731),
-                      zoom: 15,
-                    ),
-                    onMapCreated: (controller) {
-                      setState(() {
-                        _mapController = controller;
-                      });
-                    },
-                    myLocationEnabled: true,
-                    zoomControlsEnabled: false,
-                    markers: markers,
-                    polylines: polylines,
-                    gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                      Factory<OneSequenceGestureRecognizer>(
-                        () => EagerGestureRecognizer(),
-                      ),
-                    },
-                  ),
-                  const Positioned(
-                    bottom: 16,
-                    left: 16,
-                    right: 16,
-                    child: MapLegend(),
-                  ),
-                ],
+        return Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: const CameraPosition(
+                target: LatLng(-10.9472, -37.0731),
+                zoom: 15,
               ),
+              // CORREÇÃO BUG-07: sem setState — o controller não é exibido na UI
+              onMapCreated: (controller) => _mapController = controller,
+              myLocationEnabled: true,
+              zoomControlsEnabled: false,
+              markers: _staticMarkers,
+              polylines: polylines,
+              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                Factory<OneSequenceGestureRecognizer>(
+                  () => EagerGestureRecognizer(),
+                ),
+              },
             ),
-          ),
+            const Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: MapLegend(),
+            ),
+          ],
         );
-      },
-    );
+    }
   }
 }
 

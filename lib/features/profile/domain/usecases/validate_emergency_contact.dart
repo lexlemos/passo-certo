@@ -7,8 +7,7 @@ class ValidateEmergencyContactUseCase {
       return 'O nome do contato de emergência é obrigatório.';
     }
 
-    final phoneRegex = RegExp(r'^\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}$');
-    if (!phoneRegex.hasMatch(contact.phoneNumber)) {
+    if (!EmergencyContact.phoneValidationRegex.hasMatch(contact.phoneNumber)) {
       return 'Telefone inválido. Utilize o formato (DD) 9XXXX-XXXX.';
     }
 

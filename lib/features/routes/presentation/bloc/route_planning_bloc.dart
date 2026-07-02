@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/navigation_route.dart';
+import '../../domain/usecases/get_routes.dart';
 import '../../domain/usecases/get_recommended_route.dart';
 
 // --- EVENTS ---
@@ -28,8 +30,12 @@ class SelectRouteEvent extends RoutePlanningEvent {
   SelectRouteEvent({required this.routeIndex});
 }
 
+/// Evento interno disparado pelo próprio BLoC no construtor
+/// para carregar o estado inicial com os dados vindos do repositório.
+class LoadRoutesEvent extends RoutePlanningEvent {}
+
 // --- STATE ---
-class RoutePlanningState {
+class RoutePlanningState extends Equatable {
   final String originText;
   final String destinationText;
   final String selectedFilter;
@@ -37,7 +43,7 @@ class RoutePlanningState {
   final NavigationRoute? recommendedRoute;
   final int selectedRouteIndex;
 
-  RoutePlanningState({
+  const RoutePlanningState({
     required this.originText,
     required this.destinationText,
     required this.selectedFilter,
@@ -45,6 +51,15 @@ class RoutePlanningState {
     this.recommendedRoute,
     required this.selectedRouteIndex,
   });
+
+  /// Estado vazio seguro para inicialização — sem dados mock.
+  const RoutePlanningState._empty()
+      : originText = '',
+        destinationText = '',
+        selectedFilter = 'accessible',
+        routes = const [],
+        recommendedRoute = null,
+        selectedRouteIndex = 0;
 
   RoutePlanningState copyWith({
     String? originText,
@@ -63,60 +78,51 @@ class RoutePlanningState {
       selectedRouteIndex: selectedRouteIndex ?? this.selectedRouteIndex,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        originText,
+        destinationText,
+        selectedFilter,
+        routes,
+        recommendedRoute,
+        selectedRouteIndex,
+      ];
 }
 
 // --- BLOC ---
 class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
+  final GetRoutesUseCase _getRoutesUseCase;
   final GetRecommendedRouteUseCase _getRecommendedRouteUseCase;
 
   RoutePlanningBloc({
-    GetRecommendedRouteUseCase? getRecommendedRouteUseCase,
-  })  : _getRecommendedRouteUseCase = getRecommendedRouteUseCase ?? GetRecommendedRouteUseCase(),
-        super(_createInitialState(getRecommendedRouteUseCase ?? GetRecommendedRouteUseCase())) {
+    required GetRoutesUseCase getRoutesUseCase,
+    required GetRecommendedRouteUseCase getRecommendedRouteUseCase,
+  })  : _getRoutesUseCase = getRoutesUseCase,
+        _getRecommendedRouteUseCase = getRecommendedRouteUseCase,
+        super(const RoutePlanningState._empty()) {
+    on<LoadRoutesEvent>(_onLoadRoutes);
     on<SwapLocationsEvent>(_onSwapLocations);
     on<SelectFilterEvent>(_onSelectFilter);
     on<SearchRoutesEvent>(_onSearchRoutes);
     on<SelectRouteEvent>(_onSelectRoute);
+
+    // Dispara o carregamento inicial buscando dados do repositório via UseCase
+    add(LoadRoutesEvent());
   }
 
-  static RoutePlanningState _createInitialState(GetRecommendedRouteUseCase getRecommendedRouteUseCase) {
-    const mockRoutes = [
-      NavigationRoute(
-        title: 'Via CCET Park',
-        estimatedTime: '15 min',
-        distance: '1.2 km',
-        accessibilityScore: 0.95,
-        characteristics: ['PLANO', 'CALÇADAS BOAS'],
-        waypoints: [
-          RouteCoordinate(-10.9472, -37.0731),
-          RouteCoordinate(-10.9450, -37.0715),
-          RouteCoordinate(-10.9350, -37.0650),
-        ],
-      ),
-      NavigationRoute(
-        title: 'Via Terminal UFS',
-        estimatedTime: '12 min',
-        distance: '0.9 km',
-        accessibilityScore: 0.60,
-        characteristics: ['ACLIVE', 'ATENÇÃO CRUZAMENTOS'],
-        waypoints: [
-          RouteCoordinate(-10.9472, -37.0731),
-          RouteCoordinate(-10.9430, -37.0710),
-          RouteCoordinate(-10.9350, -37.0650),
-        ],
-      ),
-    ];
+  /// Carrega as rotas e calcula a recomendada de forma assíncrona a partir da camada de dados.
+  Future<void> _onLoadRoutes(LoadRoutesEvent event, Emitter<RoutePlanningState> emit) async {
+    final routes = await _getRoutesUseCase();
+    final recommendation = await _getRecommendedRouteUseCase();
 
-    final recommendation = getRecommendedRouteUseCase(mockRoutes);
-
-    return RoutePlanningState(
+    emit(state.copyWith(
       originText: 'CCET UFS',
       destinationText: 'Terminal D.I.A.',
-      selectedFilter: 'accessible',
-      routes: mockRoutes,
+      routes: routes,
       recommendedRoute: recommendation,
       selectedRouteIndex: 0,
-    );
+    ));
   }
 
   void _onSwapLocations(SwapLocationsEvent event, Emitter<RoutePlanningState> emit) {
@@ -130,8 +136,8 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
     emit(state.copyWith(selectedFilter: event.filter));
   }
 
-  void _onSearchRoutes(SearchRoutesEvent event, Emitter<RoutePlanningState> emit) {
-    final recommendation = _getRecommendedRouteUseCase(state.routes);
+  Future<void> _onSearchRoutes(SearchRoutesEvent event, Emitter<RoutePlanningState> emit) async {
+    final recommendation = await _getRecommendedRouteUseCase();
     emit(state.copyWith(
       originText: event.originText,
       destinationText: event.destinationText,

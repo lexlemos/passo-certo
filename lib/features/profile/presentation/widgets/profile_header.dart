@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({super.key});
@@ -10,14 +11,14 @@ class ProfileHeader extends StatelessWidget {
       children: [
         const CircleAvatar(
           radius: 48,
-          backgroundColor: Color(0xFF2C3E50),
+          backgroundColor: AppColors.darkBlue,
           child: Icon(Icons.person, color: Colors.white, size: 48),
         ),
         const SizedBox(height: 16),
         Text(
           'Perfil de Acessibilidade',
           style: theme.textTheme.headlineLarge?.copyWith(
-            color: const Color(0xFF2C3E50),
+            color: AppColors.darkBlue,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,

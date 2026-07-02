@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_button.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../bloc/profile_emergency_bloc.dart';
@@ -51,7 +52,7 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                     Container(
                       width: 6,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF009688), // Teal/Azul Petróleo
+                        color: AppColors.tealPrimary,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(16),
                           bottomLeft: Radius.circular(16),
@@ -67,13 +68,13 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                             const ProfileSectionHeader(
                               icon: Icons.contact_phone,
                               title: 'Contato de Emergência',
-                              color: Color(0xFF009688),
+                              color: AppColors.tealPrimary,
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'Contato de Emergência Rápido',
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: const Color(0xFF2C3E50),
+                                color: AppColors.darkBlue,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -81,7 +82,7 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                             TextFormField(
                               controller: _controller,
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: const Color(0xFF2C3E50),
+                                color: AppColors.darkBlue,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'Nome do contato ou número',
@@ -99,7 +100,7 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Color(0xFF009688), width: 1.5),
+                                  borderSide: const BorderSide(color: AppColors.tealPrimary, width: 1.5),
                                 ),
                               ),
                               validator: _validateEmergencyContact,
@@ -122,12 +123,13 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                   icon: const Icon(Icons.save, color: Colors.white),
                   gradient: const LinearGradient(
                     colors: [
-                      Color(0xFF009688), // Teal
-                      Color(0xFF8BC34A), // Verde Claro
+                      AppColors.tealPrimary,
+                      AppColors.switchGreen,
                     ],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
+
                   onPressed: state.isLoading
                       ? null
                       : () {

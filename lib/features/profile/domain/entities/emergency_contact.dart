@@ -2,6 +2,9 @@ class EmergencyContact {
   final String name;
   final String phoneNumber;
 
+  static final phoneValidationRegex = RegExp(r'^\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}$');
+  static final phoneExtractionRegex = RegExp(r'\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}');
+
   const EmergencyContact({
     required this.name,
     required this.phoneNumber,
@@ -12,8 +15,7 @@ class EmergencyContact {
     String name = inputText;
     String phone = '';
 
-    final phoneRegex = RegExp(r'\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}');
-    final match = phoneRegex.firstMatch(inputText);
+    final match = phoneExtractionRegex.firstMatch(inputText);
     if (match != null) {
       phone = match.group(0)!;
       name = inputText.replaceAll(phone, '').trim();
@@ -24,11 +26,10 @@ class EmergencyContact {
         name = 'Contato de Emergência';
       }
     } else {
-      // Se não há telefone no formato (DD) 9XXXX-XXXX, mas há algum número,
-      // podemos usar como telefone e colocar um nome genérico, ou deixar o validador falhar.
-      // Se for apenas texto sem números, assumimos o nome e um telefone mockup válido para passar a validação de domínio.
+      // Sem telefone detectado: retorna phone vazio para que o ValidateEmergencyContactUseCase
+      // produza a mensagem de erro correta. Nunca injetar números fictícios em dados de emergência.
       name = inputText;
-      phone = '(79) 99999-9999';
+      phone = '';
     }
 
     return EmergencyContact(name: name, phoneNumber: phone);
@@ -36,5 +37,5 @@ class EmergencyContact {
 
   bool get isValid =>
       name.trim().isNotEmpty &&
-      RegExp(r'^\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}$').hasMatch(phoneNumber);
+      phoneValidationRegex.hasMatch(phoneNumber);
 }

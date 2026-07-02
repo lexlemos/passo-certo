@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
 
 // --- EVENTS ---
 abstract class ProfileNavigationEvent {}
@@ -36,7 +37,7 @@ class ToggleSoundTrafficSignalsEvent extends ProfileNavigationEvent {
 }
 
 // --- STATE ---
-class ProfileNavigationState {
+class ProfileNavigationState extends Equatable {
   final bool voiceNavigation;
   final bool highContrast;
   final String textSize;
@@ -45,7 +46,7 @@ class ProfileNavigationState {
   final bool soundTrafficSignals;
   final bool hasError;
 
-  ProfileNavigationState({
+  const ProfileNavigationState({
     this.voiceNavigation = false,
     this.highContrast = false,
     this.textSize = 'Padrão',
@@ -74,11 +75,22 @@ class ProfileNavigationState {
       hasError: hasError ?? this.hasError,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        voiceNavigation,
+        highContrast,
+        textSize,
+        avoidStairs,
+        extraCrossingTime,
+        soundTrafficSignals,
+        hasError,
+      ];
 }
 
 // --- BLOC ---
 class ProfileNavigationBloc extends Bloc<ProfileNavigationEvent, ProfileNavigationState> {
-  ProfileNavigationBloc() : super(ProfileNavigationState()) {
+  ProfileNavigationBloc() : super(const ProfileNavigationState()) {
     on<LoadNavigationSettingsEvent>(_onLoadNavigationSettings);
     on<ToggleVoiceNavigationEvent>(_onToggleVoiceNavigation);
     on<ToggleHighContrastEvent>(_onToggleHighContrast);

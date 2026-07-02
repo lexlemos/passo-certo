@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/routes/presentation/pages/route_planning_page.dart';
+import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
 import '../../features/community/presentation/pages/community_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../widgets/main_navigation_shell.dart';
+import '../di/injection_container.dart' as di;
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -30,10 +33,14 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/routes',
-              builder: (context, state) => const RoutePlanningPage(),
+              builder: (context, state) => BlocProvider<RoutePlanningBloc>(
+                create: (context) => di.sl<RoutePlanningBloc>(),
+                child: const RoutePlanningPage(),
+              ),
             ),
           ],
         ),
+
         StatefulShellBranch(
           routes: [
             GoRoute(

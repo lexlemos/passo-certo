@@ -1,8 +1,14 @@
 import '../entities/navigation_route.dart';
+import '../repositories/route_repository.dart';
 
 class GetRecommendedRouteUseCase {
-  /// Recebe uma lista de rotas disponíveis e recomenda a melhor baseada em acessibilidade.
-  NavigationRoute? call(List<NavigationRoute> routes) {
+  final RouteRepository _repository;
+
+  GetRecommendedRouteUseCase(this._repository);
+
+  /// Obtém as rotas do repositório e recomenda a melhor baseada em acessibilidade.
+  Future<NavigationRoute?> call() async {
+    final routes = await _repository.getRoutes();
     if (routes.isEmpty) return null;
 
     // Ordena pela pontuação de acessibilidade decrescente

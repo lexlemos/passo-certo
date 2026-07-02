@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class ProfileSwitchRow extends StatelessWidget {
   final String title;
@@ -27,7 +28,7 @@ class ProfileSwitchRow extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: const Color(0xFF2C3E50),
+                    color: AppColors.darkBlue,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -45,8 +46,8 @@ class ProfileSwitchRow extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF8BC34A),
-            activeTrackColor: const Color(0xFF8BC34A).withValues(alpha: 0.5),
+            activeThumbColor: AppColors.switchGreen,
+            activeTrackColor: AppColors.switchGreen.withValues(alpha: 0.5),
             inactiveTrackColor: Colors.white,
           ),
         ],
@@ -54,3 +55,4 @@ class ProfileSwitchRow extends StatelessWidget {
     );
   }
 }
+

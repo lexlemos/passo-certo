@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../bloc/profile_navigation_bloc.dart';
 import 'profile_section_header.dart';
@@ -11,10 +12,13 @@ class NavigationPreferencesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ProfileNavigationBloc, ProfileNavigationState>(
+      buildWhen: (previous, current) =>
+          previous.avoidStairs != current.avoidStairs ||
+          previous.extraCrossingTime != current.extraCrossingTime ||
+          previous.soundTrafficSignals != current.soundTrafficSignals,
       builder: (context, state) {
         return Column(
           children: [
-            // Necessidades Físicas
             // Necessidades Físicas
             BaseCard(
               semanticLabel: "Seção de Necessidades Físicas",
@@ -26,7 +30,7 @@ class NavigationPreferencesSection extends StatelessWidget {
                     Container(
                       width: 6,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF4CAF50), // Verde
+                        color: AppColors.physicalNeedsGreen,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(16),
                           bottomLeft: Radius.circular(16),
@@ -42,7 +46,7 @@ class NavigationPreferencesSection extends StatelessWidget {
                             const ProfileSectionHeader(
                               icon: Icons.accessible,
                               title: 'Necessidades Físicas',
-                              color: Color(0xFF4CAF50),
+                              color: AppColors.physicalNeedsGreen,
                             ),
                             const SizedBox(height: 16),
                             ProfileSwitchRow(
@@ -85,7 +89,7 @@ class NavigationPreferencesSection extends StatelessWidget {
                     Container(
                       width: 6,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF009688), // Teal/Azul Petróleo
+                        color: AppColors.tealPrimary,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(16),
                           bottomLeft: Radius.circular(16),
@@ -101,10 +105,11 @@ class NavigationPreferencesSection extends StatelessWidget {
                             const ProfileSectionHeader(
                               icon: Icons.brightness_low,
                               title: 'Configurações de Assistência',
-                              color: Color(0xFF009688),
+                              color: AppColors.tealPrimary,
                             ),
                             const SizedBox(height: 16),
                             Container(
+
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.grey[100],

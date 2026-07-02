@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_card.dart';
 
@@ -38,7 +39,7 @@ class HomePage extends StatelessWidget {
             gradient: const LinearGradient(
               colors: [
                 AppTheme.mintGreen,
-                Color(0xFF319795), // Teal primário
+                AppColors.darkTeal,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -143,12 +144,12 @@ class HomePage extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: const BoxDecoration(
-                          color: Color(0xFFEBF8FF), // Círculo azul claro
+                          color: AppColors.lightBlueBg,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.warning_amber_rounded,
-                          color: Color(0xFF3182CE), // Alerta azul
+                          color: AppColors.alertBlue,
                           size: 22,
                         ),
                       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../bloc/profile_navigation_bloc.dart';
 import 'profile_section_header.dart';
@@ -12,6 +13,10 @@ class AccessibilitySettingsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return BlocBuilder<ProfileNavigationBloc, ProfileNavigationState>(
+      buildWhen: (previous, current) =>
+          previous.voiceNavigation != current.voiceNavigation ||
+          previous.highContrast != current.highContrast ||
+          previous.textSize != current.textSize,
       builder: (context, state) {
         return BaseCard(
           semanticLabel: "Seção de Necessidades Visuais",
@@ -23,7 +28,7 @@ class AccessibilitySettingsSection extends StatelessWidget {
                 Container(
                   width: 6,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF009688), // Teal/Azul Petróleo
+                    color: AppColors.tealPrimary,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(16),
                       bottomLeft: Radius.circular(16),
@@ -39,7 +44,7 @@ class AccessibilitySettingsSection extends StatelessWidget {
                         const ProfileSectionHeader(
                           icon: Icons.visibility,
                           title: 'Necessidades Visuais',
-                          color: Color(0xFF009688),
+                          color: AppColors.tealPrimary,
                         ),
                         const SizedBox(height: 16),
                         ProfileSwitchRow(
@@ -67,10 +72,11 @@ class AccessibilitySettingsSection extends StatelessWidget {
                         Text(
                           'Tamanho do Texto',
                           style: theme.textTheme.bodyLarge?.copyWith(
-                            color: const Color(0xFF2C3E50),
+                            color: AppColors.darkBlue,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+
                         const SizedBox(height: 8),
                         Container(
                           decoration: BoxDecoration(

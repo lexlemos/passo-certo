@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class ProfileSectionHeader extends StatelessWidget {
   final IconData icon;
@@ -22,7 +23,7 @@ class ProfileSectionHeader extends StatelessWidget {
         Text(
           title,
           style: theme.textTheme.titleLarge?.copyWith(
-            color: const Color(0xFF2C3E50),
+            color: AppColors.darkBlue,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -30,3 +31,4 @@ class ProfileSectionHeader extends StatelessWidget {
     );
   }
 }
+

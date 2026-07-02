@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 class AppTheme {
-  static const Color spaceBlue = Color(0xFF1E293B);      // Títulos e ícones principais
-  static const Color mintGreen = Color(0xFF48BB78);      // Botões de ação e sucesso
-  static const Color emergencyRed = Color(0xFFC53030);   // Card de emergência
-  static const Color softGreyBg = Color(0xFFF7FAFC);     // Fundo das telas
-  static const Color cardWhite = Color(0xFFFFFFFF);      // Fundo dos blocos/cards
-  static const Color textMuted = Color(0xFF4A5568);      // Subtítulos e textos secundários
-  static const Color tealPrimary = Color(0xFF43A0AD);
-  static const Color limeGreen = Color(0xFF8DC63F);
-  static const Color trackInactive = Color(0xFFFFB0BE);
+  static const Color spaceBlue = AppColors.spaceBlue;
+  static const Color mintGreen = AppColors.mintGreen;
+  static const Color emergencyRed = AppColors.emergencyRed;
+  static const Color softGreyBg = AppColors.softGreyBg;
+  static const Color cardWhite = AppColors.cardWhite;
+  static const Color textMuted = AppColors.textMuted;
+  static const Color tealPrimary = AppColors.tealPrimary;
+  static const Color limeGreen = AppColors.limeGreen;
+  static const Color trackInactive = AppColors.trackInactive;
+
 
   static ThemeData get lightTheme {
     return ThemeData(
