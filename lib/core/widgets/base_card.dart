@@ -7,6 +7,12 @@ class BaseCard extends StatelessWidget {
   final VoidCallback? onTap; 
   final String? semanticLabel; 
 
+  final Color? backgroundColor;
+  final Gradient? gradient;
+  final Border? border;
+  final bool? isButton;
+  final String? onTapHint;
+
   const BaseCard({
     super.key,
     required this.child,
@@ -14,36 +20,53 @@ class BaseCard extends StatelessWidget {
     this.margin,
     this.onTap,
     this.semanticLabel,
+    this.backgroundColor,
+    this.gradient,
+    this.border,
+    this.isButton,
+    this.onTapHint,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    Widget cardContent = Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16), 
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: padding ?? const EdgeInsets.all(16), 
-      child: child,
+    final cardDecoration = BoxDecoration(
+      color: gradient == null ? (backgroundColor ?? theme.colorScheme.surface) : null,
+      gradient: gradient,
+      borderRadius: BorderRadius.circular(16),
+      border: border,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     );
 
+    Widget cardContent;
+
     if (onTap != null) {
-      cardContent = Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: cardContent,
+      cardContent = Container(
+        decoration: cardDecoration,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: Padding(
+              padding: padding ?? const EdgeInsets.all(16),
+              child: child,
+            ),
+          ),
         ),
+      );
+    } else {
+      cardContent = Container(
+        decoration: cardDecoration,
+        padding: padding ?? const EdgeInsets.all(16),
+        child: child,
       );
     }
 
@@ -52,7 +75,10 @@ class BaseCard extends StatelessWidget {
       child: semanticLabel != null
           ? Semantics(
               container: true,
+              button: isButton,
+              onTapHint: onTapHint,
               label: semanticLabel,
+              excludeSemantics: true,
               child: cardContent,
             )
           : cardContent,

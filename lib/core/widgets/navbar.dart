@@ -20,7 +20,7 @@ class NavBar extends StatelessWidget {
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -31,7 +31,7 @@ class NavBar extends StatelessWidget {
         onTap: onTap,
         backgroundColor: navTheme.backgroundColor ?? theme.colorScheme.surface,
         selectedItemColor: navTheme.selectedItemColor ?? theme.colorScheme.primary,
-        unselectedItemColor: navTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withOpacity(0.6),
+        unselectedItemColor: navTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withValues(alpha: 0.6),
         selectedLabelStyle: navTheme.selectedLabelStyle,
         unselectedLabelStyle: navTheme.unselectedLabelStyle,
         type: navTheme.type ?? BottomNavigationBarType.fixed,

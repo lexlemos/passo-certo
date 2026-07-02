@@ -72,6 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
             child: const Scaffold(
+              backgroundColor: Color(0xFFF8F9FA),
               body: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Column(

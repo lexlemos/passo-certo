@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -184,6 +186,7 @@ class RouteSearchCard extends StatelessWidget {
                         icon: Icons.my_location,
                         iconColor: AppTheme.spaceBlue,
                         controller: originController,
+                        suffix: const SizedBox(width: 48),
                       ),
                       const SizedBox(height: 12),
                       RouteTextField(
@@ -192,6 +195,7 @@ class RouteSearchCard extends StatelessWidget {
                         icon: Icons.location_on,
                         iconColor: AppTheme.mintGreen,
                         controller: destinationController,
+                        suffix: const SizedBox(width: 48),
                       ),
                     ],
                   ),
@@ -266,6 +270,7 @@ class RouteTextField extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final TextEditingController? controller;
+  final Widget? suffix;
 
   const RouteTextField({
     super.key,
@@ -274,6 +279,7 @@ class RouteTextField extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     this.controller,
+    this.suffix,
   });
 
   @override
@@ -284,6 +290,7 @@ class RouteTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon, color: iconColor),
+        suffixIcon: suffix,
         filled: true,
         fillColor: AppTheme.softGreyBg,
         border: OutlineInputBorder(
@@ -371,81 +378,89 @@ class RouteOptionCard extends StatelessWidget {
             width: 2,
           ),
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(title, style: theme.textTheme.titleLarge),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          time,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isRecommended) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
                             color: AppTheme.mintGreen,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Recomendada',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        Text(distance, style: theme.textTheme.bodyMedium),
                       ],
+                      Text(
+                        title,
+                        style: theme.textTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      time,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.mintGreen,
+                      ),
                     ),
+                    Text(distance, style: theme.textTheme.bodyMedium),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: tags
-                      .map((tag) => Chip(
-                            label: Text(
-                              tag,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            backgroundColor: AppTheme.softGreyBg,
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                          ))
-                      .toList(),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Acessibilidade: $accessibilityLevel',
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 4),
-                LinearProgressIndicator(
-                  value: isHighAccessibility ? 0.95 : 0.60,
-                  backgroundColor: AppTheme.softGreyBg,
-                  color: isHighAccessibility ? AppTheme.mintGreen : Colors.orange,
                 ),
               ],
             ),
-            if (isRecommended)
-              Positioned(
-                top: 0,
-                right: 80, // Ajuste para não sobrepor o tempo
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.mintGreen,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'Recomendada',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: tags
+                  .map((tag) => Chip(
+                        label: Text(
+                          tag,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        backgroundColor: AppTheme.softGreyBg,
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Acessibilidade: $accessibilityLevel',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
+            LinearProgressIndicator(
+              value: isHighAccessibility ? 0.95 : 0.60,
+              backgroundColor: AppTheme.softGreyBg,
+              color: isHighAccessibility ? AppTheme.mintGreen : Colors.orange,
+            ),
           ],
         ),
       ),
@@ -537,6 +552,11 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                     zoomControlsEnabled: false,
                     markers: markers,
                     polylines: polylines,
+                    gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                      Factory<OneSequenceGestureRecognizer>(
+                        () => EagerGestureRecognizer(),
+                      ),
+                    },
                   ),
                   const Positioned(
                     bottom: 16,

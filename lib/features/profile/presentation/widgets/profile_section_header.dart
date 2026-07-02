@@ -14,11 +14,18 @@ class ProfileSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(width: 8),
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: const Color(0xFF2C3E50),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
