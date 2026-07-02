@@ -1,8 +1,21 @@
+import 'package:flutter/foundation.dart';
+
 class RouteCoordinate {
   final double latitude;
   final double longitude;
 
   const RouteCoordinate(this.latitude, this.longitude);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RouteCoordinate &&
+          runtimeType == other.runtimeType &&
+          latitude == other.latitude &&
+          longitude == other.longitude;
+
+  @override
+  int get hashCode => latitude.hashCode ^ longitude.hashCode;
 }
 
 class NavigationRoute {
@@ -23,4 +36,26 @@ class NavigationRoute {
   });
 
   bool get isHighlyAccessible => accessibilityScore >= 0.8;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NavigationRoute &&
+          runtimeType == other.runtimeType &&
+          title == other.title &&
+          estimatedTime == other.estimatedTime &&
+          distance == other.distance &&
+          accessibilityScore == other.accessibilityScore &&
+          listEquals(characteristics, other.characteristics) &&
+          listEquals(waypoints, other.waypoints);
+
+  @override
+  int get hashCode =>
+      title.hashCode ^
+      estimatedTime.hashCode ^
+      distance.hashCode ^
+      accessibilityScore.hashCode ^
+      Object.hashAll(characteristics) ^
+      Object.hashAll(waypoints);
 }
+

@@ -69,13 +69,13 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
               BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
                 buildWhen: (previous, current) =>
                     previous.selectedRouteIndex != current.selectedRouteIndex ||
-                    previous.routes != current.routes ||
+                    !listEquals(previous.routes, current.routes) ||
                     previous.recommendedRoute != current.recommendedRoute,
                 builder: (context, state) {
                   return Column(
                     children: List.generate(state.routes.length, (index) {
                       final route = state.routes[index];
-                      final isHighAcc = route.accessibilityScore >= 0.8;
+                      final isHighAcc = route.isHighlyAccessible;
                       final accPercentage = (route.accessibilityScore * 100).toStringAsFixed(0);
                       final accLevel = isHighAcc ? 'Alto ($accPercentage%)' : 'Médio ($accPercentage%)';
 

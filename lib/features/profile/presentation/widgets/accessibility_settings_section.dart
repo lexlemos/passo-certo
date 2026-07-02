@@ -77,23 +77,27 @@ class AccessibilitySettingsSection extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: Colors.grey.shade300),
                           ),
-                          child: DropdownButtonFormField<String>(
-                            key: ValueKey(state.textSize),
-                            initialValue: state.textSize,
+                          child: InputDecorator(
                             decoration: const InputDecoration(
                               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               border: InputBorder.none,
                             ),
-                            items: ['Padrão', 'Pequeno', 'Médio', 'Grande', 'Extra Grande']
-                                .map((size) => DropdownMenuItem(value: size, child: Text(size)))
-                                .toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                context
-                                    .read<ProfileNavigationBloc>()
-                                    .add(ChangeTextSizeEvent(value: val));
-                              }
-                            },
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: state.textSize,
+                                isExpanded: true,
+                                items: ['Padrão', 'Pequeno', 'Médio', 'Grande', 'Extra Grande']
+                                    .map((size) => DropdownMenuItem(value: size, child: Text(size)))
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    context
+                                        .read<ProfileNavigationBloc>()
+                                        .add(ChangeTextSizeEvent(value: val));
+                                  }
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ],
