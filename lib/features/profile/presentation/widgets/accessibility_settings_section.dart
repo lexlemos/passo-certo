@@ -78,6 +78,7 @@ class AccessibilitySettingsSection extends StatelessWidget {
                             border: Border.all(color: Colors.grey.shade300),
                           ),
                           child: DropdownButtonFormField<String>(
+                            key: ValueKey(state.textSize),
                             initialValue: state.textSize,
                             decoration: const InputDecoration(
                               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),

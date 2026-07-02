@@ -68,35 +68,30 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
               // Lista de Rotas Otimizada
               BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
                 buildWhen: (previous, current) =>
-                    previous.selectedRouteIndex != current.selectedRouteIndex,
+                    previous.selectedRouteIndex != current.selectedRouteIndex ||
+                    previous.routes != current.routes ||
+                    previous.recommendedRoute != current.recommendedRoute,
                 builder: (context, state) {
                   return Column(
-                    children: [
-                      RouteOptionCard(
-                        title: 'Via CCET Park',
-                        time: '15 min',
-                        distance: '1.2 km',
-                        isRecommended: true,
-                        accessibilityLevel: 'Alto (95%)',
-                        tags: const ['PLANO', 'CALÇADAS BOAS'],
-                        isSelected: state.selectedRouteIndex == 0,
+                    children: List.generate(state.routes.length, (index) {
+                      final route = state.routes[index];
+                      final isHighAcc = route.accessibilityScore >= 0.8;
+                      final accPercentage = (route.accessibilityScore * 100).toStringAsFixed(0);
+                      final accLevel = isHighAcc ? 'Alto ($accPercentage%)' : 'Médio ($accPercentage%)';
+
+                      return RouteOptionCard(
+                        title: route.title,
+                        time: route.estimatedTime,
+                        distance: route.distance,
+                        isRecommended: route == state.recommendedRoute,
+                        accessibilityLevel: accLevel,
+                        tags: route.characteristics,
+                        isSelected: state.selectedRouteIndex == index,
                         onTap: () => context
                             .read<RoutePlanningBloc>()
-                            .add(SelectRouteEvent(routeIndex: 0)),
-                      ),
-                      RouteOptionCard(
-                        title: 'Via Terminal UFS',
-                        time: '12 min',
-                        distance: '0.9 km',
-                        isRecommended: false,
-                        accessibilityLevel: 'Médio (60%)',
-                        tags: const ['ACLIVE', 'ATENÇÃO CRUZAMENTOS'],
-                        isSelected: state.selectedRouteIndex == 1,
-                        onTap: () => context
-                            .read<RoutePlanningBloc>()
-                            .add(SelectRouteEvent(routeIndex: 1)),
-                      ),
-                    ],
+                            .add(SelectRouteEvent(routeIndex: index)),
+                      );
+                    }),
                   );
                 },
               ),
