@@ -10,14 +10,9 @@ import '../widgets/emergency_contact_section.dart';
 import '../widgets/navigation_preferences_section.dart';
 import '../widgets/profile_header.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  @override
-  State<ProfilePage> createState() => _ProfilePageState();
-}
-
-class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
