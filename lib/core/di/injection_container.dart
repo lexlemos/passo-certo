@@ -24,6 +24,7 @@ import '../../features/community/domain/repositories/obstacle_repository.dart';
 import '../../features/community/domain/usecases/get_obstacles.dart';
 import '../../features/community/domain/usecases/report_obstacle.dart';
 import '../../features/community/presentation/bloc/obstacle_bloc.dart';
+import '../../features/community/presentation/bloc/community_bloc.dart';
 
 /// Instância do localizador de serviços global.
 final sl = GetIt.instance;
@@ -43,6 +44,7 @@ Future<void> init() async {
         getObstaclesUseCase: sl(),
         reportObstacleUseCase: sl(),
       ));
+  sl.registerFactory(() => CommunityBloc());
   sl.registerFactory(() => ActiveNavigationBloc(
         voiceService: sl(),
         locationTrackingRepository: sl(),

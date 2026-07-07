@@ -10,6 +10,7 @@ import '../../features/community/presentation/pages/community_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../widgets/main_navigation_shell.dart';
 import '../di/injection_container.dart' as di;
+import '../../features/community/presentation/bloc/community_bloc.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -53,7 +54,10 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/community',
-              builder: (context, state) => const CommunityPage(),
+              builder: (context, state) => BlocProvider<CommunityBloc>(
+                create: (_) => di.sl<CommunityBloc>(),
+                child: const CommunityPage(),
+              ),
             ),
           ],
         ),

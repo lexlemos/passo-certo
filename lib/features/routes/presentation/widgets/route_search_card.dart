@@ -256,7 +256,7 @@ class RouteSearchCard extends StatelessWidget {
                   if (planningState.routes.isNotEmpty) {
                     final selectedRoute = planningState.routes[planningState.selectedRouteIndex];
                     return BaseButton(
-                      label: 'Iniciar Navegação',
+                      label: 'Buscar Rota',
                       semanticLabel: 'Botão. Iniciar navegação guiada por voz para a rota selecionada.',
                       icon: const Icon(Icons.navigation, color: Colors.white),
                       onPressed: () {
