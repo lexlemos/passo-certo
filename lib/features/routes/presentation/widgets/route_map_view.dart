@@ -268,11 +268,14 @@ class _RouteMapSectionState extends State<RouteMapSection> {
               point: LatLng(state.originLat!, state.originLng!),
               width: 40,
               height: 40,
-              child: const Icon(
-                Icons.my_location,
-                color: AppTheme.spaceBlue,
-                size: 30,
-                semanticLabel: 'Origem',
+              child: Transform.rotate(
+                angle: -0.785398, // Rotaciona 45 graus para parecer uma seta de navegação ativa inclinada (ou use sem rotação)
+                child: const Icon(
+                  Icons.navigation,
+                  color: AppTheme.spaceBlue,
+                  size: 30,
+                  semanticLabel: 'Origem (Sua Localização)',
+                ),
               ),
             ),
           );
@@ -326,8 +329,8 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                   ),
                   MarkerLayer(
                     markers: [
-                      ...dynamicMarkers,
                       ...obstacleMarkers,
+                      ...dynamicMarkers,
                       if (activeState.isActive && activeState.lastPosition != null)
                         Marker(
                           point: LatLng(activeState.lastPosition!.latitude,
@@ -511,11 +514,14 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                 point: LatLng(state.originLat!, state.originLng!),
                 width: 48,
                 height: 48,
-                child: const Icon(
-                  Icons.my_location,
-                  color: AppTheme.spaceBlue,
-                  size: 36,
-                  semanticLabel: 'Origem',
+                child: Transform.rotate(
+                  angle: -0.785398,
+                  child: const Icon(
+                    Icons.navigation,
+                    color: AppTheme.spaceBlue,
+                    size: 36,
+                    semanticLabel: 'Origem (Sua Localização)',
+                  ),
                 ),
               ),
             );
@@ -573,8 +579,8 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                       PolylineLayer(polylines: polylines),
                       MarkerLayer(
                         markers: [
-                          ...dynamicMarkers,
                           ...obstacleMarkers,
+                          ...dynamicMarkers,
                           if (activeState.isActive && activeState.lastPosition != null)
                             Marker(
                               point: LatLng(activeState.lastPosition!.latitude,
