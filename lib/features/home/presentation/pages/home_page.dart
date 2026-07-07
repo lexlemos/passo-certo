@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../widgets/emergency_dialog_sheet.dart';
+import '../../../community/presentation/widgets/report_obstacle_bottom_sheet.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});

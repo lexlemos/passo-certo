@@ -34,16 +34,20 @@ class EmergencyDialogSheet extends StatelessWidget {
 
   Future<void> _dial(BuildContext context, _EmergencyOption option) async {
     final uri = Uri(scheme: 'tel', path: option.number);
+    final messenger = ScaffoldMessenger.of(context);
+    bool launched = false;
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Não foi possível abrir o discador. Verifique as permissões do app.'),
-          ),
-        );
-      }
+      // Keep launched as false
+    }
+
+    if (!launched) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível abrir o discador. Verifique as permissões do app.'),
+        ),
+      );
     }
   }
 
@@ -53,9 +57,9 @@ class EmergencyDialogSheet extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(28),
           topRight: Radius.circular(28),
         ),
@@ -163,6 +167,7 @@ class _EmergencyOptionCard extends StatelessWidget {
 
     return Semantics(
       button: true,
+      excludeSemantics: true,
       label: 'Ligar para ${option.name}, ${option.displayNumber ?? option.number}',
       child: InkWell(
         onTap: onTap,
