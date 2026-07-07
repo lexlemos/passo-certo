@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_card.dart';
+import '../widgets/emergency_dialog_sheet.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -174,9 +175,7 @@ class HomePage extends StatelessWidget {
             isButton: true,
             onTapHint: 'Efetuar ligação telefônica de emergência para SAMU ou DIASE imediatamente',
             semanticLabel: 'Botão de Emergência. Ligar para SAMU ou DIASE',
-            onTap: () {
-              // Ação de emergência (mocked)
-            },
+            onTap: () => EmergencyDialogSheet.show(context),
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [

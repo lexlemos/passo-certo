@@ -15,6 +15,17 @@ dependencies:
   go_router: ^10.1.2
   permission_handler: ^11.3.1
   equatable: ^2.0.5
+  flutter_map: ^8.3.1
+  latlong2: ^0.10.1
+  flutter_dotenv: ^6.0.1
+  http: ^1.6.0
+  geolocator: ^14.0.3
+  flutter_tts: ^4.2.5
+  hydrated_bloc: ^9.1.5
+  path_provider: ^2.1.6
+  flutter_typeahead: ^6.0.0
+  wakelock_plus: ^1.2.8
+  url_launcher: ^6.3.1
 
 
 dev_dependencies:
@@ -24,3 +35,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
