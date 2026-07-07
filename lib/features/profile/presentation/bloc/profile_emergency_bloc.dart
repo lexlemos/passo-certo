@@ -63,6 +63,7 @@ class ProfileEmergencyBloc extends HydratedBloc<ProfileEmergencyEvent, ProfileEm
     LoadEmergencyContactEvent event,
     Emitter<ProfileEmergencyState> emit,
   ) {
+    if (state.contactText.isNotEmpty) return;
     final contact = EmergencyContact.fromSingleString('Maria Souza (79) 99999-9999');
     emit(state.copyWith(
       contactText: 'Maria Souza (79) 99999-9999',

@@ -334,13 +334,22 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
   }
 
   double _distanceToSegment(LatLng p, LatLng a, LatLng b, Distance calc) {
-    final dAP = calc.as(LengthUnit.Meter, p, a);
-    final dBP = calc.as(LengthUnit.Meter, p, b);
-    
-    final mid = LatLng((a.latitude + b.latitude) / 2, (a.longitude + b.longitude) / 2);
-    final dMP = calc.as(LengthUnit.Meter, p, mid);
+    final double l2 = calc.as(LengthUnit.Meter, a, b);
+    if (l2 == 0) return calc.as(LengthUnit.Meter, p, a);
 
-    return [dAP, dBP, dMP].reduce((curr, next) => curr < next ? curr : next).toDouble();
+    final double dx = b.longitude - a.longitude;
+    final double dy = b.latitude - a.latitude;
+
+    final double t = ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) / (dx * dx + dy * dy);
+
+    if (t <= 0) return calc.as(LengthUnit.Meter, p, a);
+    if (t >= 1) return calc.as(LengthUnit.Meter, p, b);
+
+    final LatLng projection = LatLng(
+      a.latitude + t * dy,
+      a.longitude + t * dx,
+    );
+    return calc.as(LengthUnit.Meter, p, projection);
   }
 
   Future<void> _onStopNavigation(

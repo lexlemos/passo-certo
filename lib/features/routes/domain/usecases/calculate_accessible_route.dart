@@ -1,3 +1,4 @@
+import 'package:latlong2/latlong.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/either.dart';
 import '../../../community/domain/entities/obstacle.dart';
@@ -31,8 +32,20 @@ class CalculateAccessibleRouteUseCase {
           // para não quebrar a geração da rota padrão para o usuário.
         },
         (obstacles) {
+          const distanceCalc = Distance();
+          final originPoint = LatLng(originLat, originLng);
+          final destPoint = LatLng(destLat, destLng);
+
           // 2. Filtra obstáculos baseado no perfil de acessibilidade do usuário
           obstaclesToAvoid = obstacles.where((obstacle) {
+            // Ignora obstáculos se estiverem a menos de 20 metros da origem ou destino
+            final obstaclePoint = LatLng(obstacle.latitude, obstacle.longitude);
+            final distToOrigin = distanceCalc.as(LengthUnit.Meter, obstaclePoint, originPoint);
+            final distToDest = distanceCalc.as(LengthUnit.Meter, obstaclePoint, destPoint);
+            if (distToOrigin < 20.0 || distToDest < 20.0) {
+              return false;
+            }
+
             // Sempre evita buracos na calçada e calçadas bloqueadas
             if (obstacle.type == ObstacleType.pothole || 
                 obstacle.type == ObstacleType.blockedSidewalk) {

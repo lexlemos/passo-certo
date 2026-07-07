@@ -142,7 +142,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         profile: profile,
       );
     } catch (e) {
-      throw Exception('Erro de conexão ou comunicação com OpenRouteService: $e');
+      return null;
     }
   }
 
