@@ -260,7 +260,6 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
       add(StopNavigationEvent());
     }
   }
-
   Future<void> _onRecalculateRouteTriggered(
     RecalculateRouteTriggeredEvent event,
     Emitter<ActiveNavigationState> emit,
@@ -269,6 +268,10 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
     _isRecalculating = true;
 
     await _voiceService.speak("Você saiu da rota. Recalculando novo trajeto acessível.");
+    if (!state.isActive) {
+      _isRecalculating = false;
+      return;
+    }
 
     try {
       final destCoord = state.currentRoute!.waypoints.last;
@@ -282,9 +285,13 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
         requiresTactilePaving: false,
       );
 
+      if (!state.isActive) {
+        _isRecalculating = false;
+        return;
+      }
+
       await result.fold(
         (failure) async {
-          // Mantém isOffRoute e reseta timer para nova verificação posterior
           _offRouteTimer = null;
         },
         (routes) async {
@@ -340,7 +347,10 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
     final double dx = b.longitude - a.longitude;
     final double dy = b.latitude - a.latitude;
 
-    final double t = ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) / (dx * dx + dy * dy);
+    final double denominator = dx * dx + dy * dy;
+    if (denominator == 0) return calc.as(LengthUnit.Meter, p, a);
+
+    final double t = ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) / denominator;
 
     if (t <= 0) return calc.as(LengthUnit.Meter, p, a);
     if (t >= 1) return calc.as(LengthUnit.Meter, p, b);

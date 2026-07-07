@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:latlong2/latlong.dart';
@@ -141,7 +142,13 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         json.decode(response.body),
         profile: profile,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      developer.log(
+        'Erro ao buscar rota ORS para o perfil ${profile.slug}',
+        error: e,
+        stackTrace: stackTrace,
+        name: 'ORSRouteRepository',
+      );
       return null;
     }
   }

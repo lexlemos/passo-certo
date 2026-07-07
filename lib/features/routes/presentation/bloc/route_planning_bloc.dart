@@ -182,16 +182,9 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
 
   /// Carrega as rotas e calcula a recomendada de forma assíncrona a partir da camada de dados.
   Future<void> _onLoadRoutes(LoadRoutesEvent event, Emitter<RoutePlanningState> emit) async {
-    emit(state.copyWith(
-      originText: 'CCET UFS',
-      originLat: -10.9472,
-      originLng: -37.0731,
-      destinationText: 'Terminal D.I.A.',
-      destLat: -10.9350,
-      destLng: -37.0650,
-    ));
-
-    add(CalculateRouteEvent());
+    // Busca automaticamente a localização atual do usuário para o campo de origem.
+    // O destino fica vazio para o usuário buscar a rota que preferir de acordo com sua proximidade real.
+    add(FetchCurrentLocationForOriginEvent());
   }
 
   void _onSwapLocations(SwapLocationsEvent event, Emitter<RoutePlanningState> emit) {

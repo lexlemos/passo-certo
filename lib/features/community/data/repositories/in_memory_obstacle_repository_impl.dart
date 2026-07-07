@@ -4,35 +4,7 @@ import '../../domain/entities/obstacle.dart';
 import '../../domain/repositories/obstacle_repository.dart';
 
 class InMemoryObstacleRepositoryImpl implements ObstacleRepository {
-  final List<Obstacle> _obstacles = [
-    Obstacle(
-      id: '1',
-      latitude: -10.9472,
-      longitude: -37.0731,
-      type: ObstacleType.pothole,
-      description: 'Buraco na calçada próximo à entrada do CCET',
-      reportedAt: DateTime.now().subtract(const Duration(days: 2)),
-      upvotes: 12,
-    ),
-    Obstacle(
-      id: '2',
-      latitude: -10.9350,
-      longitude: -37.0650,
-      type: ObstacleType.blockedSidewalk,
-      description: 'Entulho bloqueando a rampa de acessibilidade do Terminal',
-      reportedAt: DateTime.now().subtract(const Duration(hours: 5)),
-      upvotes: 8,
-    ),
-    Obstacle(
-      id: '3',
-      latitude: -10.9430,
-      longitude: -37.0710,
-      type: ObstacleType.noTactilePaving,
-      description: 'Ausência de piso podotátil na faixa de pedestres',
-      reportedAt: DateTime.now().subtract(const Duration(days: 1)),
-      upvotes: 4,
-    ),
-  ];
+  final List<Obstacle> _obstacles = [];
 
   @override
   Future<Either<Failure, List<Obstacle>>> getObstacles() async {

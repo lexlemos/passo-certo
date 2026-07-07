@@ -32,6 +32,7 @@ class GetCurrentLocationPlaceUseCase {
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
       ),
+      timeLimit: const Duration(seconds: 10),
     );
 
     // 4. Converte latitude/longitude para um endereço real amigável

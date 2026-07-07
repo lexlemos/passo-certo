@@ -542,157 +542,165 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
             );
           }
 
-          return Material(
-            color: Colors.black,
-            child: Builder(builder: (builderCtx) {
-              final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
+          return PopScope(
+            canPop: true,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) {
+                SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+              }
+            },
+            child: Material(
+              color: Colors.black,
+              child: Builder(builder: (builderCtx) {
+                final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
 
-              return Stack(
-                children: [
-                  // --------------------------------------------------------
-                  // Mapa ocupa 100% da tela
-                  // --------------------------------------------------------
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: state.originLat != null && state.originLng != null
-                          ? LatLng(state.originLat!, state.originLng!)
-                          : const LatLng(-10.9472, -37.0731),
-                      initialZoom: 15.0,
-                      interactionOptions: const InteractionOptions(
-                        flags: InteractiveFlag.all,
-                      ),
-                      onPositionChanged: (position, hasGesture) {
-                        if (hasGesture) {
-                          setState(() {
-                            _autoCenter = false;
-                          });
-                        }
-                      },
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.example.passo_certo',
-                      ),
-                      PolylineLayer(polylines: polylines),
-                      MarkerLayer(
-                        markers: [
-                          ...obstacleMarkers,
-                          ...dynamicMarkers,
-                          if (activeState.isActive && activeState.lastPosition != null)
-                            Marker(
-                              point: LatLng(activeState.lastPosition!.latitude,
-                                  activeState.lastPosition!.longitude),
-                              width: 48,
-                              height: 48,
-                              child: const Icon(
-                                Icons.navigation,
-                                color: AppTheme.mintGreen,
-                                size: 36,
-                                semanticLabel: 'Sua posição atual na navegação',
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  // --------------------------------------------------------
-                  // Legenda na parte inferior
-                  // --------------------------------------------------------
-                  const Positioned(
-                    bottom: 32,
-                    left: 16,
-                    right: 16,
-                    child: MapLegend(),
-                  ),
-
-                  if (!_autoCenter && activeState.isActive)
-                    Positioned(
-                      bottom: 100,
-                      right: 16,
-                      child: FloatingActionButton.small(
-                        onPressed: () {
-                          setState(() {
-                            _autoCenter = true;
-                          });
-                          if (activeState.lastPosition != null) {
-                            _mapController.move(
-                              LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-                              _mapController.camera.zoom,
-                            );
+                return Stack(
+                  children: [
+                    // --------------------------------------------------------
+                    // Mapa ocupa 100% da tela
+                    // --------------------------------------------------------
+                    FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: state.originLat != null && state.originLng != null
+                            ? LatLng(state.originLat!, state.originLng!)
+                            : const LatLng(-10.9472, -37.0731),
+                        initialZoom: 15.0,
+                        interactionOptions: const InteractionOptions(
+                          flags: InteractiveFlag.all,
+                        ),
+                        onPositionChanged: (position, hasGesture) {
+                          if (hasGesture) {
+                            setState(() {
+                              _autoCenter = false;
+                            });
                           }
                         },
-                        backgroundColor: Colors.white,
-                        child: const Icon(Icons.gps_not_fixed, color: AppTheme.spaceBlue),
                       ),
-                    ),
-
-                  // --------------------------------------------------------
-                  // Botão fechar (canto superior esquerdo)
-                  // --------------------------------------------------------
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 12,
-                    left: 16,
-                    child: Semantics(
-                      button: true,
-                      label: 'Fechar mapa em tela cheia',
-                      child: GestureDetector(
-                        onTap: widget.onClose,
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.passo_certo',
+                        ),
+                        PolylineLayer(polylines: polylines),
+                        MarkerLayer(
+                          markers: [
+                            ...obstacleMarkers,
+                            ...dynamicMarkers,
+                            if (activeState.isActive && activeState.lastPosition != null)
+                              Marker(
+                                point: LatLng(activeState.lastPosition!.latitude,
+                                    activeState.lastPosition!.longitude),
+                                width: 48,
+                                height: 48,
+                                child: const Icon(
+                                  Icons.navigation,
+                                  color: AppTheme.mintGreen,
+                                  size: 36,
+                                  semanticLabel: 'Sua posição atual na navegação',
+                                ),
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: AppTheme.spaceBlue,
-                            size: 22,
-                          ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
-                  ),
 
-                  // --------------------------------------------------------
-                  // Rótulo "Navegação em Tela Cheia" no topo
-                  // --------------------------------------------------------
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.spaceBlue.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(20),
+                    // --------------------------------------------------------
+                    // Legenda na parte inferior
+                    // --------------------------------------------------------
+                    const Positioned(
+                      bottom: 32,
+                      left: 16,
+                      right: 16,
+                      child: MapLegend(),
+                    ),
+
+                    if (!_autoCenter && activeState.isActive)
+                      Positioned(
+                        bottom: 100,
+                        right: 16,
+                        child: FloatingActionButton.small(
+                          onPressed: () {
+                            setState(() {
+                              _autoCenter = true;
+                            });
+                            if (activeState.lastPosition != null) {
+                              _mapController.move(
+                                LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
+                                _mapController.camera.zoom,
+                              );
+                            }
+                          },
+                          backgroundColor: Colors.white,
+                          child: const Icon(Icons.gps_not_fixed, color: AppTheme.spaceBlue),
                         ),
-                        child: const Text(
-                          'Passo Certo — Navegação',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                      ),
+
+                    // --------------------------------------------------------
+                    // Botão fechar (canto superior esquerdo)
+                    // --------------------------------------------------------
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 12,
+                      left: 16,
+                      child: Semantics(
+                        button: true,
+                        label: 'Fechar mapa em tela cheia',
+                        child: GestureDetector(
+                          onTap: widget.onClose,
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: AppTheme.spaceBlue,
+                              size: 22,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            }),
+
+                    // --------------------------------------------------------
+                    // Rótulo "Navegação em Tela Cheia" no topo
+                    // --------------------------------------------------------
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.spaceBlue.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Passo Certo — Navegação',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
           );
         },
       ),

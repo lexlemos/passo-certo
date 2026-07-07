@@ -47,6 +47,7 @@ class RouteSearchCard extends StatelessWidget {
                           child: TypeAheadField<Place>(
                             controller: originController,
                             suggestionsCallback: (pattern) async {
+                              if (pattern.trim().length < 3) return const [];
                               final planningState = context.read<RoutePlanningBloc>().state;
                               return await searchAddressUseCase(
                                 pattern,
@@ -129,6 +130,7 @@ class RouteSearchCard extends StatelessWidget {
                           child: TypeAheadField<Place>(
                             controller: destinationController,
                             suggestionsCallback: (pattern) async {
+                              if (pattern.trim().length < 3) return const [];
                               final planningState = context.read<RoutePlanningBloc>().state;
                               return await searchAddressUseCase(
                                 pattern,
