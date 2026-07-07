@@ -7,8 +7,18 @@ class GetRecommendedRouteUseCase {
   GetRecommendedRouteUseCase(this._repository);
 
   /// Obtém as rotas do repositório e recomenda a melhor baseada em acessibilidade.
-  Future<NavigationRoute?> call() async {
-    final routes = await _repository.getRoutes();
+  Future<NavigationRoute?> call({
+    required double originLat,
+    required double originLng,
+    required double destLat,
+    required double destLng,
+  }) async {
+    final routes = await _repository.getRoutes(
+      originLat: originLat,
+      originLng: originLng,
+      destLat: destLat,
+      destLng: destLng,
+    );
     if (routes.isEmpty) return null;
 
     // Ordena pela pontuação de acessibilidade decrescente

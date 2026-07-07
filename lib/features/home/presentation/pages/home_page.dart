@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_card.dart';
@@ -136,7 +137,8 @@ class HomePage extends StatelessWidget {
                   onTapHint: 'Reportar problemas ou barreiras na via de tráfego',
                   semanticLabel: 'Botão Reportar Obstáculo',
                   onTap: () {
-                    // Ação de reportar obstáculo (mocked)
+                    // Abre o bottom sheet de reporte com uma localização simulada padrão (próximo à UFS)
+                    ReportObstacleBottomSheet.show(context, const LatLng(-10.9472, -37.0731));
                   },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

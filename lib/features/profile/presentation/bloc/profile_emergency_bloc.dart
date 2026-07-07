@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 
 import '../../domain/entities/emergency_contact.dart';
 import '../../domain/usecases/validate_emergency_contact.dart';
@@ -16,12 +16,14 @@ class SaveEmergencyContactEvent extends ProfileEmergencyEvent {
 // --- STATE ---
 class ProfileEmergencyState {
   final String contactText;
+  final EmergencyContact? contact;
   final bool isSaved;
   final String? errorMessage;
   final bool isLoading;
 
   ProfileEmergencyState({
     required this.contactText,
+    this.contact,
     this.isSaved = false,
     this.errorMessage,
     this.isLoading = false,
@@ -29,12 +31,14 @@ class ProfileEmergencyState {
 
   ProfileEmergencyState copyWith({
     String? contactText,
+    EmergencyContact? contact,
     bool? isSaved,
     String? errorMessage,
     bool? isLoading,
   }) {
     return ProfileEmergencyState(
       contactText: contactText ?? this.contactText,
+      contact: contact ?? this.contact,
       isSaved: isSaved ?? this.isSaved,
       errorMessage: errorMessage,
       isLoading: isLoading ?? this.isLoading,
@@ -43,7 +47,7 @@ class ProfileEmergencyState {
 }
 
 // --- BLOC ---
-class ProfileEmergencyBloc extends Bloc<ProfileEmergencyEvent, ProfileEmergencyState> {
+class ProfileEmergencyBloc extends HydratedBloc<ProfileEmergencyEvent, ProfileEmergencyState> {
   final ValidateEmergencyContactUseCase _validateEmergencyContactUseCase;
 
   ProfileEmergencyBloc({
@@ -59,9 +63,11 @@ class ProfileEmergencyBloc extends Bloc<ProfileEmergencyEvent, ProfileEmergencyS
     LoadEmergencyContactEvent event,
     Emitter<ProfileEmergencyState> emit,
   ) {
-    // Carrega um contato inicial para demonstração
+    if (state.contactText.isNotEmpty) return;
+    final contact = EmergencyContact.fromSingleString('Maria Souza (79) 99999-9999');
     emit(state.copyWith(
       contactText: 'Maria Souza (79) 99999-9999',
+      contact: contact,
       isSaved: false,
     ));
   }
@@ -96,7 +102,48 @@ class ProfileEmergencyBloc extends Bloc<ProfileEmergencyEvent, ProfileEmergencyS
       isLoading: false,
       isSaved: true,
       contactText: inputText,
+      contact: contact,
       errorMessage: null,
     ));
+  }
+
+  @override
+  ProfileEmergencyState? fromJson(Map<String, dynamic> json) {
+    try {
+      final contactText = json['contactText'] as String? ?? '';
+      EmergencyContact? contact;
+      if (json['contact'] != null) {
+        final contactMap = json['contact'] as Map<String, dynamic>;
+        contact = EmergencyContact(
+          name: contactMap['name'] as String? ?? '',
+          phoneNumber: contactMap['phoneNumber'] as String? ?? '',
+        );
+      }
+      return ProfileEmergencyState(
+        contactText: contactText,
+        contact: contact,
+        isSaved: json['isSaved'] as bool? ?? false,
+        errorMessage: json['errorMessage'] as String?,
+        isLoading: json['isLoading'] as bool? ?? false,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Map<String, dynamic>? toJson(ProfileEmergencyState state) {
+    return {
+      'contactText': state.contactText,
+      'isSaved': state.isSaved,
+      'errorMessage': state.errorMessage,
+      'isLoading': state.isLoading,
+      'contact': state.contact != null
+          ? {
+              'name': state.contact!.name,
+              'phoneNumber': state.contact!.phoneNumber,
+            }
+          : null,
+    };
   }
 }

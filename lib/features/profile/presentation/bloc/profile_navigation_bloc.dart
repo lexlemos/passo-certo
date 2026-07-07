@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:equatable/equatable.dart';
 
 // --- EVENTS ---
@@ -89,7 +89,7 @@ class ProfileNavigationState extends Equatable {
 }
 
 // --- BLOC ---
-class ProfileNavigationBloc extends Bloc<ProfileNavigationEvent, ProfileNavigationState> {
+class ProfileNavigationBloc extends HydratedBloc<ProfileNavigationEvent, ProfileNavigationState> {
   ProfileNavigationBloc() : super(const ProfileNavigationState()) {
     on<LoadNavigationSettingsEvent>(_onLoadNavigationSettings);
     on<ToggleVoiceNavigationEvent>(_onToggleVoiceNavigation);
@@ -147,5 +147,35 @@ class ProfileNavigationBloc extends Bloc<ProfileNavigationEvent, ProfileNavigati
     Emitter<ProfileNavigationState> emit,
   ) {
     emit(state.copyWith(soundTrafficSignals: event.value, hasError: false));
+  }
+
+  @override
+  ProfileNavigationState? fromJson(Map<String, dynamic> json) {
+    try {
+      return ProfileNavigationState(
+        voiceNavigation: json['voiceNavigation'] as bool? ?? false,
+        highContrast: json['highContrast'] as bool? ?? false,
+        textSize: json['textSize'] as String? ?? 'Padrão',
+        avoidStairs: json['avoidStairs'] as bool? ?? false,
+        extraCrossingTime: json['extraCrossingTime'] as bool? ?? false,
+        soundTrafficSignals: json['soundTrafficSignals'] as bool? ?? false,
+        hasError: json['hasError'] as bool? ?? false,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Map<String, dynamic>? toJson(ProfileNavigationState state) {
+    return {
+      'voiceNavigation': state.voiceNavigation,
+      'highContrast': state.highContrast,
+      'textSize': state.textSize,
+      'avoidStairs': state.avoidStairs,
+      'extraCrossingTime': state.extraCrossingTime,
+      'soundTrafficSignals': state.soundTrafficSignals,
+      'hasError': state.hasError,
+    };
   }
 }
