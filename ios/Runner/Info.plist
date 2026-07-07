@@ -45,5 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Obrigatório para permission_handler solicitar localização no iOS -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O Passo Certo precisa da sua localização para exibir sua posição no mapa e calcular rotas acessíveis próximas a você.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>O Passo Certo precisa da sua localização para oferecer navegação contínua e alertas de acessibilidade ao longo do trajeto.</string>
 </dict>
 </plist>
