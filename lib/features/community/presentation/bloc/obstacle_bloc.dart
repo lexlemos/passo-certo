@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../domain/entities/obstacle.dart';
 import '../../domain/usecases/get_obstacles.dart';
@@ -58,7 +59,12 @@ class ObstacleState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [obstacles, isLoading, errorMessage, isReportedSuccess];
+  List<Object?> get props => [
+    obstacles,
+    isLoading,
+    errorMessage,
+    isReportedSuccess,
+  ];
 }
 
 // --- BLOC ---
@@ -69,9 +75,9 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
   ObstacleBloc({
     required GetObstaclesUseCase getObstaclesUseCase,
     required ReportObstacleUseCase reportObstacleUseCase,
-  })  : _getObstaclesUseCase = getObstaclesUseCase,
-        _reportObstacleUseCase = reportObstacleUseCase,
-        super(const ObstacleState(obstacles: [])) {
+  }) : _getObstaclesUseCase = getObstaclesUseCase,
+       _reportObstacleUseCase = reportObstacleUseCase,
+       super(const ObstacleState(obstacles: [])) {
     on<LoadObstaclesEvent>(_onLoadObstacles);
     on<ReportNewObstacleEvent>(_onReportNewObstacle);
 
@@ -79,44 +85,72 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
     add(LoadObstaclesEvent());
   }
 
-  Future<void> _onLoadObstacles(LoadObstaclesEvent event, Emitter<ObstacleState> emit) async {
-    emit(state.copyWith(isLoading: true, isReportedSuccess: false, errorMessage: null));
+  Future<void> _onLoadObstacles(
+    LoadObstaclesEvent event,
+    Emitter<ObstacleState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        isLoading: true,
+        isReportedSuccess: false,
+        errorMessage: null,
+      ),
+    );
 
     final result = await _getObstaclesUseCase();
 
     result.fold(
-      (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-      (obstacles) => emit(state.copyWith(isLoading: false, obstacles: obstacles)),
+      (failure) =>
+          emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+      (obstacles) =>
+          emit(state.copyWith(isLoading: false, obstacles: obstacles)),
     );
   }
 
-  Future<void> _onReportNewObstacle(ReportNewObstacleEvent event, Emitter<ObstacleState> emit) async {
-    emit(state.copyWith(isLoading: true, isReportedSuccess: false, errorMessage: null));
+  Future<void> _onReportNewObstacle(
+    ReportNewObstacleEvent event,
+    Emitter<ObstacleState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        isLoading: true,
+        isReportedSuccess: false,
+        errorMessage: null,
+      ),
+    );
 
     final newObstacle = Obstacle(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       latitude: event.location.latitude,
       longitude: event.location.longitude,
       type: event.type,
       description: event.description,
-      reportedAt: DateTime.now(),
+      reportedAt: DateTime.now().toUtc(),
       upvotes: 0,
+      reporterId: 'anonymous',
+      severity: ObstacleSeverity.blocking,
+      status: ObstacleStatus.active,
     );
 
     final result = await _reportObstacleUseCase(newObstacle);
 
     await result.fold(
-      (failure) async => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+      (failure) async =>
+          emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
       (_) async {
         // Recarrega todos os obstáculos após salvar
         final reloadResult = await _getObstaclesUseCase();
         reloadResult.fold(
-          (failure) => emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
-          (obstacles) => emit(state.copyWith(
-            isLoading: false,
-            obstacles: obstacles,
-            isReportedSuccess: true,
-          )),
+          (failure) => emit(
+            state.copyWith(isLoading: false, errorMessage: failure.message),
+          ),
+          (obstacles) => emit(
+            state.copyWith(
+              isLoading: false,
+              obstacles: obstacles,
+              isReportedSuccess: true,
+            ),
+          ),
         );
       },
     );

@@ -55,4 +55,3 @@ class ProfileSwitchRow extends StatelessWidget {
     );
   }
 }
-

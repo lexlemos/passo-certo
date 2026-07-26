@@ -1,12 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum PostCategory {
-  all,
-  accessibility,
-  danger,
-  tip,
-  praise,
-}
+enum PostCategory { all, accessibility, danger, tip, praise }
 
 extension PostCategoryExtension on PostCategory {
   String get label {
@@ -77,5 +71,15 @@ class CommunityPost extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, authorName, location, content, category, createdAt, likes, comments, likedByMe];
+  List<Object?> get props => [
+    id,
+    authorName,
+    location,
+    content,
+    category,
+    createdAt,
+    likes,
+    comments,
+    likedByMe,
+  ];
 }

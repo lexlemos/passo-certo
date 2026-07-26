@@ -7,10 +7,7 @@ import 'navbar.dart';
 class MainNavigationShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
-  const MainNavigationShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const MainNavigationShell({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context) {

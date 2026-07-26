@@ -2,13 +2,14 @@ class EmergencyContact {
   final String name;
   final String phoneNumber;
 
-  static final phoneValidationRegex = RegExp(r'^\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}$');
-  static final phoneExtractionRegex = RegExp(r'\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}');
+  static final phoneValidationRegex = RegExp(
+    r'^\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}$',
+  );
+  static final phoneExtractionRegex = RegExp(
+    r'\(?[1-9]{2}\)?\s?9?[0-9]{4}\-?[0-9]{4}',
+  );
 
-  const EmergencyContact({
-    required this.name,
-    required this.phoneNumber,
-  });
+  const EmergencyContact({required this.name, required this.phoneNumber});
 
   factory EmergencyContact.fromSingleString(String input) {
     final inputText = input.trim();
@@ -36,6 +37,5 @@ class EmergencyContact {
   }
 
   bool get isValid =>
-      name.trim().isNotEmpty &&
-      phoneValidationRegex.hasMatch(phoneNumber);
+      name.trim().isNotEmpty && phoneValidationRegex.hasMatch(phoneNumber);
 }

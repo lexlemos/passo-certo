@@ -16,7 +16,8 @@ class ActiveNavigationPanel extends StatelessWidget {
     }
 
     final step = activeNavState.currentStep;
-    final instructionText = step?.instruction ?? 'Siga em frente pela rota acessível';
+    final instructionText =
+        step?.instruction ?? 'Siga em frente pela rota acessível';
     final distanceText = activeNavState.distanceToNextStep > 0
         ? '${activeNavState.distanceToNextStep.toStringAsFixed(0)} m'
         : 'Próximo';
@@ -26,7 +27,8 @@ class ActiveNavigationPanel extends StatelessWidget {
       left: 16,
       right: 16,
       child: Semantics(
-        label: 'Painel de Navegação Ativa. Instrução atual: $instructionText. Distância: $distanceText',
+        label:
+            'Painel de Navegação Ativa. Instrução atual: $instructionText. Distância: $distanceText',
         child: Card(
           elevation: 8,
           color: AppTheme.spaceBlue,
@@ -42,7 +44,11 @@ class ActiveNavigationPanel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.navigation, color: AppTheme.mintGreen, size: 28),
+                    const Icon(
+                      Icons.navigation,
+                      color: AppTheme.mintGreen,
+                      size: 28,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -55,7 +61,10 @@ class ActiveNavigationPanel extends StatelessWidget {
                     ),
                     if (activeNavState.isOffRoute)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.emergencyRed,
                           borderRadius: BorderRadius.circular(8),
@@ -103,10 +112,15 @@ class ActiveNavigationPanel extends StatelessWidget {
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () {
-                    context.read<ActiveNavigationBloc>().add(StopNavigationEvent());
+                    context.read<ActiveNavigationBloc>().add(
+                      StopNavigationEvent(),
+                    );
                   },
                   icon: const Icon(Icons.close, color: Colors.white),
-                  label: const Text('Encerrar Navegação', style: TextStyle(color: Colors.white)),
+                  label: const Text(
+                    'Encerrar Navegação',
+                    style: TextStyle(color: Colors.white),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.emergencyRed,
                     shape: RoundedRectangleBorder(

@@ -7,18 +7,23 @@ class NominatimGeocodingRepositoryImpl implements GeocodingRepository {
   final http.Client _client;
 
   NominatimGeocodingRepositoryImpl({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   @override
-  Future<List<Place>> searchAddress(String query, {double? userLat, double? userLon}) async {
+  Future<List<Place>> searchAddress(
+    String query, {
+    double? userLat,
+    double? userLon,
+  }) async {
     if (query.trim().isEmpty) return const [];
 
-    String urlStr = 'https://nominatim.openstreetmap.org/search'
-      '?q=${Uri.encodeComponent(query)}'
-      '&format=json'
-      '&addressdetails=1'
-      '&limit=5'
-      '&countrycodes=br';
+    String urlStr =
+        'https://nominatim.openstreetmap.org/search'
+        '?q=${Uri.encodeComponent(query)}'
+        '&format=json'
+        '&addressdetails=1'
+        '&limit=5'
+        '&countrycodes=br';
 
     if (userLat != null && userLon != null) {
       urlStr += '&lat=$userLat&lon=$userLon';
@@ -27,13 +32,16 @@ class NominatimGeocodingRepositoryImpl implements GeocodingRepository {
     final url = Uri.parse(urlStr);
 
     try {
-      final response = await _client.get(
-        url,
-        headers: {
-          'User-Agent': 'PassoCertoApp/1.0.0 (contact: allex.lima.dev@gmail.com)',
-          'Accept-Language': 'pt-BR,pt;q=0.9',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await _client
+          .get(
+            url,
+            headers: {
+              'User-Agent':
+                  'PassoCertoApp/1.0.0 (contact: allex.lima.dev@gmail.com)',
+              'Accept-Language': 'pt-BR,pt;q=0.9',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
         throw Exception('Nominatim HTTP Error: ${response.statusCode}');
@@ -52,11 +60,7 @@ class NominatimGeocodingRepositoryImpl implements GeocodingRepository {
           final lng = double.tryParse(lonStr);
 
           if (lat != null && lng != null) {
-            places.add(Place(
-              name: displayName,
-              latitude: lat,
-              longitude: lng,
-            ));
+            places.add(Place(name: displayName, latitude: lat, longitude: lng));
           }
         }
       }
@@ -78,13 +82,16 @@ class NominatimGeocodingRepositoryImpl implements GeocodingRepository {
     );
 
     try {
-      final response = await _client.get(
-        url,
-        headers: {
-          'User-Agent': 'PassoCertoApp/1.0.0 (contact: allex.lima.dev@gmail.com)',
-          'Accept-Language': 'pt-BR,pt;q=0.9',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await _client
+          .get(
+            url,
+            headers: {
+              'User-Agent':
+                  'PassoCertoApp/1.0.0 (contact: allex.lima.dev@gmail.com)',
+              'Accept-Language': 'pt-BR,pt;q=0.9',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
         throw Exception('Nominatim HTTP Error: ${response.statusCode}');
@@ -103,8 +110,13 @@ class NominatimGeocodingRepositoryImpl implements GeocodingRepository {
         final parts = <String>[];
         if (address['road'] != null) parts.add(address['road'].toString());
         if (address['suburb'] != null) parts.add(address['suburb'].toString());
-        if (address['city'] != null || address['town'] != null || address['village'] != null) {
-          parts.add((address['city'] ?? address['town'] ?? address['village']).toString());
+        if (address['city'] != null ||
+            address['town'] != null ||
+            address['village'] != null) {
+          parts.add(
+            (address['city'] ?? address['town'] ?? address['village'])
+                .toString(),
+          );
         }
         name = parts.join(', ');
       }
@@ -113,11 +125,7 @@ class NominatimGeocodingRepositoryImpl implements GeocodingRepository {
         name = data['display_name']?.toString() ?? 'Localização Atual';
       }
 
-      return Place(
-        name: name,
-        latitude: lat,
-        longitude: lng,
-      );
+      return Place(name: name, latitude: lat, longitude: lng);
     } catch (_) {
       // Fallback resiliente: evita crashar ou travar a UI caso o Nominatim esteja fora do ar
       return Place(

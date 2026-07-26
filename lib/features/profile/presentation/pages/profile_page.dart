@@ -21,10 +21,13 @@ class ProfilePage extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<ProfileNavigationBloc>(
-          create: (context) => di.sl<ProfileNavigationBloc>()..add(LoadNavigationSettingsEvent()),
+          create: (context) =>
+              di.sl<ProfileNavigationBloc>()
+                ..add(LoadNavigationSettingsEvent()),
         ),
         BlocProvider<ProfileEmergencyBloc>(
-          create: (context) => di.sl<ProfileEmergencyBloc>()..add(LoadEmergencyContactEvent()),
+          create: (context) =>
+              di.sl<ProfileEmergencyBloc>()..add(LoadEmergencyContactEvent()),
         ),
       ],
       child: Builder(
@@ -33,7 +36,8 @@ class ProfilePage extends StatelessWidget {
             listeners: [
               BlocListener<ProfileEmergencyBloc, ProfileEmergencyState>(
                 listenWhen: (prev, curr) =>
-                    prev.isSaved != curr.isSaved || prev.errorMessage != curr.errorMessage,
+                    prev.isSaved != curr.isSaved ||
+                    prev.errorMessage != curr.errorMessage,
                 listener: (context, state) {
                   if (state.isSaved) {
                     ScaffoldMessenger.of(context).showSnackBar(

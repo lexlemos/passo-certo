@@ -29,7 +29,10 @@ class MainScaffold extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications, semanticLabel: 'Notificações'),
+            icon: const Icon(
+              Icons.notifications,
+              semanticLabel: 'Notificações',
+            ),
             onPressed: () {},
           ),
         ],

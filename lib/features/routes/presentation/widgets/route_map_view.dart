@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../community/domain/entities/obstacle.dart';
 import '../../../community/presentation/bloc/obstacle_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/config/app_constants.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../bloc/route_planning_bloc.dart';
 import '../bloc/active_navigation_bloc.dart';
@@ -25,9 +26,11 @@ class RouteMapSection extends StatefulWidget {
 enum _LocationPermissionStatus { checking, granted, denied }
 
 class _RouteMapSectionState extends State<RouteMapSection> {
-  _LocationPermissionStatus _permissionStatus = _LocationPermissionStatus.checking;
+  _LocationPermissionStatus _permissionStatus =
+      _LocationPermissionStatus.checking;
   final MapController _mapController = MapController();
   bool _autoCenter = true;
+  bool _hasCenteredOnUser = false;
 
   @override
   void initState() {
@@ -41,7 +44,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
     var status = await Permission.locationWhenInUse.status;
 
     if (status.isGranted) {
-      if (mounted) setState(() => _permissionStatus = _LocationPermissionStatus.granted);
+      if (mounted) {
+        setState(() => _permissionStatus = _LocationPermissionStatus.granted);
+      }
       return;
     }
 
@@ -76,9 +81,13 @@ class _RouteMapSectionState extends State<RouteMapSection> {
       context: context,
       barrierDismissible: false,
       transitionDuration: const Duration(milliseconds: 350),
-      pageBuilder: (ctx, animation, secondaryAnimation) => const SizedBox.shrink(),
+      pageBuilder: (ctx, animation, secondaryAnimation) =>
+          const SizedBox.shrink(),
       transitionBuilder: (ctx, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOutCubic,
+        );
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
@@ -95,7 +104,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 onClose: () {
                   Navigator.of(ctx).pop();
                   // Restaura apenas orientação retrato ao sair
-                  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+                  SystemChrome.setPreferredOrientations([
+                    DeviceOrientation.portraitUp,
+                  ]);
                 },
               ),
             ),
@@ -108,24 +119,59 @@ class _RouteMapSectionState extends State<RouteMapSection> {
   @override
   Widget build(BuildContext context) {
     // CRI-01: Escuta exclusivamente alterações na lista de obstáculos via context.select no build principal
-    final obstacles = context.select<ObstacleBloc, List<Obstacle>>((bloc) => bloc.state.obstacles);
+    final obstacles = context.select<ObstacleBloc, List<Obstacle>>(
+      (bloc) => bloc.state.obstacles,
+    );
 
-    return BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
-      listenWhen: (prev, curr) =>
-          prev.isActive != curr.isActive ||
-          prev.lastPosition != curr.lastPosition,
-      listener: (context, activeState) {
-        if (activeState.isActive && activeState.lastPosition != null && _autoCenter) {
-          _mapController.move(
-            LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-            _mapController.camera.zoom,
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
+          listenWhen: (prev, curr) =>
+              prev.isActive != curr.isActive ||
+              prev.lastPosition != curr.lastPosition ||
+              prev.proximityAlertObstacle != curr.proximityAlertObstacle,
+          listener: (context, activeState) {
+            if (activeState.proximityAlertObstacle != null) {
+              _showProximityAlert(context, activeState.proximityAlertObstacle!);
+            }
+            if (activeState.isActive &&
+                activeState.lastPosition != null &&
+                _autoCenter) {
+              _mapController.move(
+                LatLng(
+                  activeState.lastPosition!.latitude,
+                  activeState.lastPosition!.longitude,
+                ),
+                _mapController.camera.zoom,
+              );
+            }
+          },
+        ),
+        BlocListener<RoutePlanningBloc, RoutePlanningState>(
+          listenWhen: (prev, curr) =>
+              (prev.originLat != curr.originLat ||
+                  prev.originLng != curr.originLng) &&
+              curr.originLat != null &&
+              curr.originLng != null,
+          listener: (context, planningState) {
+            if (!_hasCenteredOnUser) {
+              _hasCenteredOnUser = true;
+              _mapController.move(
+                LatLng(planningState.originLat!, planningState.originLng!),
+                _mapController.camera.zoom,
+              );
+            }
+          },
+        ),
+      ],
       child: BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
         buildWhen: (previous, current) =>
             previous.routes != current.routes ||
-            previous.selectedRouteIndex != current.selectedRouteIndex,
+            previous.selectedRouteIndex != current.selectedRouteIndex ||
+            previous.originLat != current.originLat ||
+            previous.originLng != current.originLng ||
+            previous.destLat != current.destLat ||
+            previous.destLng != current.destLng,
         builder: (context, state) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,7 +186,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                   height: 300,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.mintGreen.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: AppTheme.mintGreen.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -149,36 +197,39 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              if (state.routes.isNotEmpty) ...[
+                const SizedBox(height: 16),
 
-              // ----------------------------------------------------------------
-              // Botão "Iniciar Rota"
-              // ----------------------------------------------------------------
-              Semantics(
-                button: true,
-                label: 'Iniciar rota — expande o mapa para tela cheia',
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openFullScreen(context),
-                    icon: const Icon(Icons.navigation_rounded, size: 22),
-                    label: const Text(
-                      'Iniciar Rota',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.mintGreen,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      shadowColor: AppTheme.mintGreen.withValues(alpha: 0.4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                Semantics(
+                  button: true,
+                  label: 'Iniciar rota — expande o mapa para tela cheia',
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openFullScreen(context),
+                      icon: const Icon(Icons.navigation_rounded, size: 22),
+                      label: const Text(
+                        'Iniciar Rota',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.mintGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: AppTheme.mintGreen.withValues(alpha: 0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           );
         },
@@ -253,8 +304,8 @@ class _RouteMapSectionState extends State<RouteMapSection> {
             color: isSelected
                 ? (isRec ? AppTheme.mintGreen : Colors.orange)
                 : (isRec
-                    ? AppTheme.mintGreen.withValues(alpha: 0.4)
-                    : Colors.orange.withValues(alpha: 0.4)),
+                      ? AppTheme.mintGreen.withValues(alpha: 0.4)
+                      : Colors.orange.withValues(alpha: 0.4)),
             strokeWidth: isSelected ? 8 : 4,
           );
         }).toList();
@@ -269,7 +320,8 @@ class _RouteMapSectionState extends State<RouteMapSection> {
               width: 40,
               height: 40,
               child: Transform.rotate(
-                angle: -0.785398, // Rotaciona 45 graus para parecer uma seta de navegação ativa inclinada (ou use sem rotação)
+                angle:
+                    -0.785398, // Rotaciona 45 graus para parecer uma seta de navegação ativa inclinada (ou use sem rotação)
                 child: const Icon(
                   Icons.navigation,
                   color: AppTheme.spaceBlue,
@@ -288,7 +340,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
               height: 40,
               child: const Icon(
                 Icons.location_on,
-                color: AppTheme.mintGreen,
+                color: AppTheme.emergencyRed,
                 size: 30,
                 semanticLabel: 'Destino',
               ),
@@ -296,150 +348,160 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           );
         }
 
-        return Builder(builder: (builderCtx) {
-          final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
+        return Builder(
+          builder: (builderCtx) {
+            final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
 
-          return Stack(
-            children: [
-              FlutterMap(
-                mapController: mapController,
-                options: MapOptions(
-                  initialCenter: state.originLat != null && state.originLng != null
-                      ? LatLng(state.originLat!, state.originLng!)
-                      : const LatLng(-10.9472, -37.0731),
-                  initialZoom: 15.0,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.all,
-                  ),
-                  onPositionChanged: (position, hasGesture) {
-                    if (hasGesture) {
-                      setState(() {
-                        _autoCenter = false;
-                      });
-                    }
-                  },
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.passo_certo',
-                  ),
-                  PolylineLayer(
-                    polylines: polylines,
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      ...obstacleMarkers,
-                      ...dynamicMarkers,
-                      if (activeState.isActive && activeState.lastPosition != null)
-                        Marker(
-                          point: LatLng(activeState.lastPosition!.latitude,
-                              activeState.lastPosition!.longitude),
-                          width: 40,
-                          height: 40,
-                          child: const Icon(
-                            Icons.navigation,
-                            color: AppTheme.mintGreen,
-                            size: 32,
-                            semanticLabel: 'Sua posição atual na navegação',
+            return Stack(
+              children: [
+                FlutterMap(
+                  mapController: mapController,
+                  options: MapOptions(
+                    initialCenter:
+                        state.originLat != null && state.originLng != null
+                        ? LatLng(state.originLat!, state.originLng!)
+                        : const LatLng(
+                            AppConstants.defaultMapCenterLat,
+                            AppConstants.defaultMapCenterLng,
                           ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              if (!_autoCenter && activeState.isActive)
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: FloatingActionButton.small(
-                    onPressed: () {
-                      setState(() {
-                        _autoCenter = true;
-                      });
-                      if (activeState.lastPosition != null) {
-                        mapController.move(
-                          LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-                          mapController.camera.zoom,
-                        );
+                    initialZoom: 15.0,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.all,
+                    ),
+                    onPositionChanged: (position, hasGesture) {
+                      if (hasGesture) {
+                        setState(() {
+                          _autoCenter = false;
+                        });
                       }
                     },
-                    backgroundColor: Colors.white,
-                    child: const Icon(Icons.gps_not_fixed, color: AppTheme.spaceBlue),
                   ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.passo_certo',
+                    ),
+                    PolylineLayer(polylines: polylines),
+                    MarkerLayer(
+                      markers: [
+                        ...obstacleMarkers,
+                        ...dynamicMarkers,
+                        if (activeState.isActive &&
+                            activeState.lastPosition != null)
+                          Marker(
+                            point: LatLng(
+                              activeState.lastPosition!.latitude,
+                              activeState.lastPosition!.longitude,
+                            ),
+                            width: 40,
+                            height: 40,
+                            child: const Icon(
+                              Icons.navigation,
+                              color: AppTheme.mintGreen,
+                              size: 32,
+                              semanticLabel: 'Sua posição atual na navegação',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              const Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
-                child: MapLegend(),
-              ),
-            ],
-          );
-        });
+                if (!_autoCenter && activeState.isActive)
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Semantics(
+                      button: true,
+                      label: 'Centralizar mapa na minha localização atual',
+                      child: FloatingActionButton.small(
+                        onPressed: () {
+                          setState(() {
+                            _autoCenter = true;
+                          });
+                          if (activeState.lastPosition != null) {
+                            mapController.move(
+                              LatLng(
+                                activeState.lastPosition!.latitude,
+                                activeState.lastPosition!.longitude,
+                              ),
+                              mapController.camera.zoom,
+                            );
+                          }
+                        },
+                        backgroundColor: Colors.white,
+                        child: const Icon(
+                          Icons.gps_not_fixed,
+                          color: AppTheme.spaceBlue,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (!activeState.isActive &&
+                    state.originLat != null &&
+                    state.originLng != null)
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Semantics(
+                      button: true,
+                      label: 'Centralizar mapa na minha localização atual',
+                      child: FloatingActionButton.small(
+                        heroTag: 'recenter_user_loc_btn',
+                        onPressed: () {
+                          mapController.move(
+                            LatLng(state.originLat!, state.originLng!),
+                            mapController.camera.zoom,
+                          );
+                        },
+                        backgroundColor: Colors.white,
+                        child: const Icon(
+                          Icons.my_location,
+                          color: AppTheme.spaceBlue,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                const Positioned(
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  child: MapLegend(),
+                ),
+              ],
+            );
+          },
+        );
     }
   }
 
   /// Converte a lista de entidades de obstáculos para Marcadores acessíveis do flutter_map
   List<Marker> _buildObstacleMarkers(List<Obstacle> obstacles) {
     return obstacles.map((obstacle) {
-      final IconData iconData;
-      final Color color;
-      final String semanticLabel;
-
-      switch (obstacle.type) {
-        case ObstacleType.pothole:
-          iconData = Icons.warning_amber_rounded;
-          color = Colors.orange;
-          semanticLabel = 'Alerta: Buraco. ${obstacle.description}';
-          break;
-        case ObstacleType.noTactilePaving:
-          iconData = Icons.do_not_disturb_on_total_silence;
-          color = Colors.blue;
-          semanticLabel = 'Alerta: Ausência de piso podotátil. ${obstacle.description}';
-          break;
-        case ObstacleType.stairs:
-          iconData = Icons.stairs_rounded;
-          color = AppTheme.emergencyRed;
-          semanticLabel = 'Alerta: Escada sem rampa. ${obstacle.description}';
-          break;
-        case ObstacleType.blockedSidewalk:
-          iconData = Icons.block_flipped;
-          color = Colors.redAccent;
-          semanticLabel = 'Alerta: Calçada bloqueada. ${obstacle.description}';
-          break;
-        case ObstacleType.other:
-          iconData = Icons.help_outline_rounded;
-          color = Colors.grey;
-          semanticLabel = 'Alerta: Obstáculo geral. ${obstacle.description}';
-          break;
-      }
+      final bool isBlocking = obstacle.severity == ObstacleSeverity.blocking;
+      final Color bgColor = isBlocking
+          ? const Color(0xFFD32F2F)
+          : const Color(0xFFFBC02D);
+      final Color iconColor = isBlocking ? Colors.white : Colors.black;
+      final IconData iconData = isBlocking ? Icons.block : Icons.priority_high;
+      final String semanticLabel = isBlocking
+          ? 'PERIGO: Bloqueio. '
+          : 'ATENÇÃO: Aviso. ';
 
       return Marker(
         point: LatLng(obstacle.latitude, obstacle.longitude),
         width: 36,
         height: 36,
+        alignment: Alignment.center,
         child: Semantics(
           label: semanticLabel,
-          button: false,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                )
-              ],
-              border: Border.all(color: color, width: 2),
+              color: bgColor,
+              borderRadius: BorderRadius.circular(4), // Design Utilitário
             ),
-            child: Icon(
-              iconData,
-              color: color,
-              size: 20,
-            ),
+            child: Icon(iconData, color: iconColor, size: 24),
           ),
         ),
       );
@@ -469,17 +531,27 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final obstacles =
-        context.select<ObstacleBloc, List<Obstacle>>((bloc) => bloc.state.obstacles);
+    final obstacles = context.select<ObstacleBloc, List<Obstacle>>(
+      (bloc) => bloc.state.obstacles,
+    );
 
     return BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
       listenWhen: (prev, curr) =>
           prev.isActive != curr.isActive ||
-          prev.lastPosition != curr.lastPosition,
+          prev.lastPosition != curr.lastPosition ||
+          prev.proximityAlertObstacle != curr.proximityAlertObstacle,
       listener: (context, activeState) {
-        if (activeState.isActive && activeState.lastPosition != null && _autoCenter) {
+        if (activeState.proximityAlertObstacle != null) {
+          _showProximityAlert(context, activeState.proximityAlertObstacle!);
+        }
+        if (activeState.isActive &&
+            activeState.lastPosition != null &&
+            _autoCenter) {
           _mapController.move(
-            LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
+            LatLng(
+              activeState.lastPosition!.latitude,
+              activeState.lastPosition!.longitude,
+            ),
             _mapController.camera.zoom,
           );
         }
@@ -487,7 +559,11 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
       child: BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
         buildWhen: (previous, current) =>
             previous.routes != current.routes ||
-            previous.selectedRouteIndex != current.selectedRouteIndex,
+            previous.selectedRouteIndex != current.selectedRouteIndex ||
+            previous.originLat != current.originLat ||
+            previous.originLng != current.originLng ||
+            previous.destLat != current.destLat ||
+            previous.destLng != current.destLng,
         builder: (context, state) {
           final polylines = state.routes.asMap().entries.map((entry) {
             final index = entry.key;
@@ -499,8 +575,8 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
               color: isSelected
                   ? (isRec ? AppTheme.mintGreen : Colors.orange)
                   : (isRec
-                      ? AppTheme.mintGreen.withValues(alpha: 0.4)
-                      : Colors.orange.withValues(alpha: 0.4)),
+                        ? AppTheme.mintGreen.withValues(alpha: 0.4)
+                        : Colors.orange.withValues(alpha: 0.4)),
               strokeWidth: isSelected ? 10 : 5,
             );
           }).toList();
@@ -534,7 +610,7 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                 height: 48,
                 child: const Icon(
                   Icons.location_on,
-                  color: AppTheme.mintGreen,
+                  color: AppTheme.emergencyRed,
                   size: 36,
                   semanticLabel: 'Destino',
                 ),
@@ -546,160 +622,215 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
             canPop: true,
             onPopInvokedWithResult: (didPop, result) {
               if (didPop) {
-                SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+                SystemChrome.setPreferredOrientations([
+                  DeviceOrientation.portraitUp,
+                ]);
               }
             },
             child: Material(
               color: Colors.black,
-              child: Builder(builder: (builderCtx) {
-                final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
+              child: Builder(
+                builder: (builderCtx) {
+                  final activeState = builderCtx
+                      .watch<ActiveNavigationBloc>()
+                      .state;
 
-                return Stack(
-                  children: [
-                    // --------------------------------------------------------
-                    // Mapa ocupa 100% da tela
-                    // --------------------------------------------------------
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: state.originLat != null && state.originLng != null
-                            ? LatLng(state.originLat!, state.originLng!)
-                            : const LatLng(-10.9472, -37.0731),
-                        initialZoom: 15.0,
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.all,
-                        ),
-                        onPositionChanged: (position, hasGesture) {
-                          if (hasGesture) {
-                            setState(() {
-                              _autoCenter = false;
-                            });
-                          }
-                        },
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.passo_certo',
-                        ),
-                        PolylineLayer(polylines: polylines),
-                        MarkerLayer(
-                          markers: [
-                            ...obstacleMarkers,
-                            ...dynamicMarkers,
-                            if (activeState.isActive && activeState.lastPosition != null)
-                              Marker(
-                                point: LatLng(activeState.lastPosition!.latitude,
-                                    activeState.lastPosition!.longitude),
-                                width: 48,
-                                height: 48,
-                                child: const Icon(
-                                  Icons.navigation,
-                                  color: AppTheme.mintGreen,
-                                  size: 36,
-                                  semanticLabel: 'Sua posição atual na navegação',
+                  return Stack(
+                    children: [
+                      // --------------------------------------------------------
+                      // Mapa ocupa 100% da tela
+                      // --------------------------------------------------------
+                      FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter:
+                              state.originLat != null && state.originLng != null
+                              ? LatLng(state.originLat!, state.originLng!)
+                              : const LatLng(
+                                  AppConstants.defaultMapCenterLat,
+                                  AppConstants.defaultMapCenterLng,
                                 ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    // --------------------------------------------------------
-                    // Legenda na parte inferior
-                    // --------------------------------------------------------
-                    const Positioned(
-                      bottom: 32,
-                      left: 16,
-                      right: 16,
-                      child: MapLegend(),
-                    ),
-
-                    if (!_autoCenter && activeState.isActive)
-                      Positioned(
-                        bottom: 100,
-                        right: 16,
-                        child: FloatingActionButton.small(
-                          onPressed: () {
-                            setState(() {
-                              _autoCenter = true;
-                            });
-                            if (activeState.lastPosition != null) {
-                              _mapController.move(
-                                LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-                                _mapController.camera.zoom,
-                              );
+                          initialZoom: 15.0,
+                          interactionOptions: const InteractionOptions(
+                            flags: InteractiveFlag.all,
+                          ),
+                          onPositionChanged: (position, hasGesture) {
+                            if (hasGesture) {
+                              setState(() {
+                                _autoCenter = false;
+                              });
                             }
                           },
-                          backgroundColor: Colors.white,
-                          child: const Icon(Icons.gps_not_fixed, color: AppTheme.spaceBlue),
                         ),
-                      ),
-
-                    // --------------------------------------------------------
-                    // Botão fechar (canto superior esquerdo)
-                    // --------------------------------------------------------
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 12,
-                      left: 16,
-                      child: Semantics(
-                        button: true,
-                        label: 'Fechar mapa em tela cheia',
-                        child: GestureDetector(
-                          onTap: widget.onClose,
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.example.passo_certo',
+                          ),
+                          PolylineLayer(polylines: polylines),
+                          MarkerLayer(
+                            markers: [
+                              ...obstacleMarkers,
+                              ...dynamicMarkers,
+                              if (activeState.isActive &&
+                                  activeState.lastPosition != null)
+                                Marker(
+                                  point: LatLng(
+                                    activeState.lastPosition!.latitude,
+                                    activeState.lastPosition!.longitude,
+                                  ),
+                                  width: 48,
+                                  height: 48,
+                                  child: const Icon(
+                                    Icons.navigation,
+                                    color: AppTheme.mintGreen,
+                                    size: 36,
+                                    semanticLabel:
+                                        'Sua posição atual na navegação',
+                                  ),
                                 ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: AppTheme.spaceBlue,
-                              size: 22,
-                            ),
+                            ],
                           ),
-                        ),
+                        ],
                       ),
-                    ),
 
-                    // --------------------------------------------------------
-                    // Rótulo "Navegação em Tela Cheia" no topo
-                    // --------------------------------------------------------
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 16,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.spaceBlue.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(20),
+                      // --------------------------------------------------------
+                      // Legenda na parte inferior
+                      // --------------------------------------------------------
+                      const Positioned(
+                        bottom: 32,
+                        left: 16,
+                        right: 16,
+                        child: MapLegend(),
+                      ),
+
+                      if (!_autoCenter && activeState.isActive)
+                        Positioned(
+                          bottom: 100,
+                          right: 16,
+                          child: Semantics(
+                            button: true,
+                            label:
+                                'Centralizar mapa na minha localização atual',
+                            child: FloatingActionButton.small(
+                              onPressed: () {
+                                setState(() {
+                                  _autoCenter = true;
+                                });
+                                if (activeState.lastPosition != null) {
+                                  _mapController.move(
+                                    LatLng(
+                                      activeState.lastPosition!.latitude,
+                                      activeState.lastPosition!.longitude,
+                                    ),
+                                    _mapController.camera.zoom,
+                                  );
+                                }
+                              },
+                              backgroundColor: Colors.white,
+                              child: const Icon(
+                                Icons.gps_not_fixed,
+                                color: AppTheme.spaceBlue,
+                              ),
+                            ),
                           ),
-                          child: const Text(
-                            'Passo Certo — Navegação',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                        ),
+                      if (!activeState.isActive &&
+                          state.originLat != null &&
+                          state.originLng != null)
+                        Positioned(
+                          bottom: 100,
+                          right: 16,
+                          child: Semantics(
+                            button: true,
+                            label:
+                                'Centralizar mapa na minha localização atual',
+                            child: FloatingActionButton.small(
+                              heroTag: 'recenter_user_loc_fs_btn',
+                              onPressed: () {
+                                _mapController.move(
+                                  LatLng(state.originLat!, state.originLng!),
+                                  _mapController.camera.zoom,
+                                );
+                              },
+                              backgroundColor: Colors.white,
+                              child: const Icon(
+                                Icons.my_location,
+                                color: AppTheme.spaceBlue,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // --------------------------------------------------------
+                      // Botão fechar (canto superior esquerdo)
+                      // --------------------------------------------------------
+                      Positioned(
+                        top: MediaQuery.of(context).padding.top + 12,
+                        left: 16,
+                        child: Semantics(
+                          button: true,
+                          label: 'Fechar mapa em tela cheia',
+                          child: GestureDetector(
+                            onTap: widget.onClose,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: AppTheme.spaceBlue,
+                                size: 22,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              }),
+
+                      // --------------------------------------------------------
+                      // Rótulo "Navegação em Tela Cheia" no topo
+                      // --------------------------------------------------------
+                      Positioned(
+                        top: MediaQuery.of(context).padding.top + 16,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.spaceBlue.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Passo Certo — Navegação',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           );
         },
@@ -722,7 +853,8 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
         case ObstacleType.noTactilePaving:
           iconData = Icons.do_not_disturb_on_total_silence;
           color = Colors.blue;
-          semanticLabel = 'Alerta: Ausência de piso podotátil. ${obstacle.description}';
+          semanticLabel =
+              'Alerta: Ausência de piso podotátil. ${obstacle.description}';
           break;
         case ObstacleType.stairs:
           iconData = Icons.stairs_rounded;
@@ -757,7 +889,7 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                   color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
-                )
+                ),
               ],
               border: Border.all(color: color, width: 2),
             ),
@@ -795,10 +927,7 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
 
-  const _LegendItem({
-    required this.color,
-    required this.label,
-  });
+  const _LegendItem({required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -813,4 +942,54 @@ class _LegendItem extends StatelessWidget {
       ],
     );
   }
+}
+
+void _showProximityAlert(BuildContext context, Obstacle obs) {
+  HapticFeedback.heavyImpact();
+  Future.delayed(const Duration(milliseconds: 300), () {
+    HapticFeedback.heavyImpact();
+  });
+
+  final isBlocking = obs.severity == ObstacleSeverity.blocking;
+  final bgColor = isBlocking
+      ? const Color(0xFFD32F2F)
+      : const Color(0xFFFBC02D);
+  final textColor = isBlocking ? Colors.white : Colors.black;
+
+  final banner = MaterialBanner(
+    content: Text(
+      isBlocking ? 'PERIGO A FRENTE: ' : 'ATENÇÃO A FRENTE: ',
+      style: TextStyle(
+        color: textColor,
+        fontWeight: FontWeight.w900,
+        fontSize: 16,
+      ),
+    ),
+    leading: Icon(
+      isBlocking ? Icons.block : Icons.priority_high,
+      color: textColor,
+      size: 36,
+    ),
+    backgroundColor: bgColor,
+    elevation: 0,
+    actions: [
+      TextButton(
+        onPressed: () =>
+            ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+        child: Text(
+          'OK',
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w900),
+        ),
+      ),
+    ],
+  );
+
+  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+  ScaffoldMessenger.of(context).showMaterialBanner(banner);
+
+  Future.delayed(const Duration(seconds: 4), () {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    }
+  });
 }

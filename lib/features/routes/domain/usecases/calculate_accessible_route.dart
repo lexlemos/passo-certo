@@ -10,7 +10,10 @@ class CalculateAccessibleRouteUseCase {
   final RouteRepository _routeRepository;
   final ObstacleRepository _obstacleRepository;
 
-  CalculateAccessibleRouteUseCase(this._routeRepository, this._obstacleRepository);
+  CalculateAccessibleRouteUseCase(
+    this._routeRepository,
+    this._obstacleRepository,
+  );
 
   Future<Either<Failure, List<NavigationRoute>>> call({
     required double originLat,
@@ -19,63 +22,74 @@ class CalculateAccessibleRouteUseCase {
     required double destLng,
     required bool avoidStairs,
     required bool requiresTactilePaving,
+    List<Obstacle> activeObstacles = const [],
   }) async {
     try {
-      // 1. Busca todos os obstáculos urbanos cadastrados de forma colaborativa
-      final obstaclesResult = await _obstacleRepository.getObstacles();
-      
-      List<Obstacle> obstaclesToAvoid = [];
+      List<Obstacle> allObstacles = List.from(activeObstacles);
 
-      obstaclesResult.fold(
-        (failure) {
-          // Em caso de falha de conexão com o banco de obstáculos, prosseguimos sem polígonos de exclusão
-          // para não quebrar a geração da rota padrão para o usuário.
-        },
-        (obstacles) {
-          const distanceCalc = Distance();
-          final originPoint = LatLng(originLat, originLng);
-          final destPoint = LatLng(destLat, destLng);
+      if (allObstacles.isEmpty) {
+        final obstaclesResult = await _obstacleRepository.getObstacles();
+        obstaclesResult.fold((_) {}, (obs) => allObstacles.addAll(obs));
+      }
 
-          // 2. Filtra obstáculos baseado no perfil de acessibilidade do usuário
-          obstaclesToAvoid = obstacles.where((obstacle) {
-            // Ignora obstáculos se estiverem a menos de 20 metros da origem ou destino
-            final obstaclePoint = LatLng(obstacle.latitude, obstacle.longitude);
-            final distToOrigin = distanceCalc.as(LengthUnit.Meter, obstaclePoint, originPoint);
-            final distToDest = distanceCalc.as(LengthUnit.Meter, obstaclePoint, destPoint);
-            if (distToOrigin < 20.0 || distToDest < 20.0) {
-              return false;
-            }
+      const distanceCalc = Distance();
+      final originPoint = LatLng(originLat, originLng);
+      final destPoint = LatLng(destLat, destLng);
 
-            // Sempre evita buracos na calçada e calçadas bloqueadas
-            if (obstacle.type == ObstacleType.pothole || 
-                obstacle.type == ObstacleType.blockedSidewalk) {
-              return true;
-            }
-            // Evita escadas se o usuário tiver restrições motoras/evitar escadas habilitado
-            if (avoidStairs && obstacle.type == ObstacleType.stairs) {
-              return true;
-            }
-            // Evita áreas sem piso podotátil se o usuário necessitar de piso tátil (necessidade visual)
-            if (requiresTactilePaving && obstacle.type == ObstacleType.noTactilePaving) {
-              return true;
-            }
-            return false;
-          }).toList();
-        },
-      );
+      // 2. Filtra obstáculos baseado no perfil de acessibilidade do usuário e severidade
+      final blockingObstacles = allObstacles.where((obstacle) {
+        // Regra de negócio: apenas obstáculos bloqueantes alteram o traçado
+        if (obstacle.severity != ObstacleSeverity.blocking) {
+          return false;
+        }
 
-      // 3. Solicita a rota calculada contornando os polígonos geográficos dos obstáculos correspondentes
+        // Ignora obstáculos se estiverem a menos de 20 metros da origem ou destino
+        final obstaclePoint = LatLng(obstacle.latitude, obstacle.longitude);
+        final distToOrigin = distanceCalc.as(
+          LengthUnit.Meter,
+          obstaclePoint,
+          originPoint,
+        );
+        final distToDest = distanceCalc.as(
+          LengthUnit.Meter,
+          obstaclePoint,
+          destPoint,
+        );
+        if (distToOrigin < 20.0 || distToDest < 20.0) {
+          return false;
+        }
+
+        // Sempre evita buracos na calçada e calçadas bloqueadas
+        if (obstacle.type == ObstacleType.pothole ||
+            obstacle.type == ObstacleType.blockedSidewalk) {
+          return true;
+        }
+        // Evita escadas se o usuário tiver restrições motoras/evitar escadas habilitado
+        if (avoidStairs && obstacle.type == ObstacleType.stairs) {
+          return true;
+        }
+        // Evita áreas sem piso podotátil se o usuário necessitar de piso tátil (necessidade visual)
+        if (requiresTactilePaving &&
+            obstacle.type == ObstacleType.noTactilePaving) {
+          return true;
+        }
+        return false;
+      }).toList();
+
+      // 3. Solicita a rota calculada contornando os polígonos geográficos dos obstáculos bloqueantes
       final routes = await _routeRepository.getRoutes(
         originLat: originLat,
         originLng: originLng,
         destLat: destLat,
         destLng: destLng,
-        obstaclesToAvoid: obstaclesToAvoid,
+        blockingObstacles: blockingObstacles,
       );
 
       return Right(routes);
     } catch (e) {
-      return Left(ServerFailure('Falha ao calcular rota dinâmica acessível: $e'));
+      return Left(
+        ServerFailure('Falha ao calcular rota dinâmica acessível: $e'),
+      );
     }
   }
 }

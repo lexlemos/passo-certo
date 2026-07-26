@@ -10,7 +10,8 @@ class EmergencyContactSection extends StatefulWidget {
   const EmergencyContactSection({super.key});
 
   @override
-  State<EmergencyContactSection> createState() => _EmergencyContactSectionState();
+  State<EmergencyContactSection> createState() =>
+      _EmergencyContactSectionState();
 }
 
 class _EmergencyContactSectionState extends State<EmergencyContactSection> {
@@ -89,18 +90,28 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                                 hintStyle: TextStyle(color: Colors.grey[400]),
                                 filled: true,
                                 fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: AppColors.tealPrimary, width: 1.5),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.tealPrimary,
+                                    width: 1.5,
+                                  ),
                                 ),
                               ),
                               validator: _validateEmergencyContact,
@@ -118,14 +129,12 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
               builder: (context, state) {
                 return BaseButton(
                   label: 'Salvar Perfil',
-                  semanticLabel: 'Botão. Salvar todas as configurações de acessibilidade.',
+                  semanticLabel:
+                      'Botão. Salvar todas as configurações de acessibilidade.',
                   borderRadius: 12,
                   icon: const Icon(Icons.save, color: Colors.white),
                   gradient: const LinearGradient(
-                    colors: [
-                      AppColors.tealPrimary,
-                      AppColors.switchGreen,
-                    ],
+                    colors: [AppColors.tealPrimary, AppColors.switchGreen],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
@@ -135,8 +144,10 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
                       : () {
                           if (_formKey.currentState?.validate() ?? false) {
                             context.read<ProfileEmergencyBloc>().add(
-                                  SaveEmergencyContactEvent(contactInput: _controller.text),
-                                );
+                              SaveEmergencyContactEvent(
+                                contactInput: _controller.text,
+                              ),
+                            );
                           }
                         },
                 );
@@ -149,8 +160,12 @@ class _EmergencyContactSectionState extends State<EmergencyContactSection> {
   }
 
   String? _validateEmergencyContact(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Por favor, insira um contato de emergência.';
-    if (value.trim().length < 3) return 'Contato deve ter pelo menos 3 caracteres.';
+    if (value == null || value.trim().isEmpty) {
+      return 'Por favor, insira um contato de emergência.';
+    }
+    if (value.trim().length < 3) {
+      return 'Contato deve ter pelo menos 3 caracteres.';
+    }
     return null;
   }
 }

@@ -29,9 +29,9 @@ class RouteListView extends StatelessWidget {
               accessibilityScore: route.accessibilityScore,
               tags: route.characteristics,
               isSelected: state.selectedRouteIndex == index,
-              onTap: () => context
-                  .read<RoutePlanningBloc>()
-                  .add(SelectRouteEvent(routeIndex: index)),
+              onTap: () => context.read<RoutePlanningBloc>().add(
+                SelectRouteEvent(routeIndex: index),
+              ),
             );
           }),
         );
@@ -67,7 +67,9 @@ class RouteOptionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isHighAccessibility = accessibilityScore >= 0.8;
     final accPercentage = (accessibilityScore * 100).toStringAsFixed(0);
-    final accLevel = isHighAccessibility ? 'Alto ($accPercentage%)' : 'Médio ($accPercentage%)';
+    final accLevel = isHighAccessibility
+        ? 'Alto ($accPercentage%)'
+        : 'Médio ($accPercentage%)';
 
     return BaseCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -97,7 +99,10 @@ class RouteOptionCard extends StatelessWidget {
                     children: [
                       if (isRecommended) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           margin: const EdgeInsets.only(bottom: 6),
                           decoration: BoxDecoration(
                             color: AppTheme.mintGreen,
@@ -142,25 +147,24 @@ class RouteOptionCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               children: tags
-                  .map((tag) => Chip(
-                        label: Text(
-                          tag,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  .map(
+                    (tag) => Chip(
+                      label: Text(
+                        tag,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
-                        backgroundColor: AppTheme.softGreyBg,
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ))
+                      ),
+                      backgroundColor: AppTheme.softGreyBg,
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Acessibilidade: $accLevel',
-              style: theme.textTheme.bodySmall,
-            ),
+            Text('Acessibilidade: $accLevel', style: theme.textTheme.bodySmall),
             const SizedBox(height: 4),
             LinearProgressIndicator(
               value: accessibilityScore,

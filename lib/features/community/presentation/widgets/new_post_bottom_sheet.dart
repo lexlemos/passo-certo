@@ -49,7 +49,8 @@ class _NewPostBottomSheetState extends State<NewPostBottomSheet> {
     final theme = Theme.of(context);
 
     return BlocListener<CommunityBloc, CommunityState>(
-      listenWhen: (prev, curr) => !prev.postAddedSuccess && curr.postAddedSuccess,
+      listenWhen: (prev, curr) =>
+          !prev.postAddedSuccess && curr.postAddedSuccess,
       listener: (context, state) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +100,9 @@ class _NewPostBottomSheetState extends State<NewPostBottomSheet> {
               const SizedBox(height: 4),
               Text(
                 'Compartilhe informações úteis com a comunidade.',
-                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[500]),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[500],
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -123,9 +126,14 @@ class _NewPostBottomSheetState extends State<NewPostBottomSheet> {
                     onTap: () => setState(() => _selectedCategory = cat),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: selected ? color.withValues(alpha: 0.12) : Colors.grey[100],
+                        color: selected
+                            ? color.withValues(alpha: 0.12)
+                            : Colors.grey[100],
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected ? color : Colors.grey[300]!,
@@ -169,9 +177,15 @@ class _NewPostBottomSheetState extends State<NewPostBottomSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.tealPrimary, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: AppColors.tealPrimary,
+                      width: 1.5,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -200,7 +214,10 @@ class _NewPostBottomSheetState extends State<NewPostBottomSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.tealPrimary, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: AppColors.tealPrimary,
+                      width: 1.5,
+                    ),
                   ),
                   contentPadding: const EdgeInsets.all(12),
                 ),
@@ -219,31 +236,45 @@ class _NewPostBottomSheetState extends State<NewPostBottomSheet> {
                               final content = _contentController.text.trim();
                               if (content.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('A mensagem não pode estar vazia.')),
+                                  const SnackBar(
+                                    content: Text(
+                                      'A mensagem não pode estar vazia.',
+                                    ),
+                                  ),
                                 );
                                 return;
                               }
-                              context.read<CommunityBloc>().add(AddPostEvent(
-                                    content: content,
-                                    location: _locationController.text.trim(),
-                                    category: _selectedCategory,
-                                  ));
+                              context.read<CommunityBloc>().add(
+                                AddPostEvent(
+                                  content: content,
+                                  location: _locationController.text.trim(),
+                                  category: _selectedCategory,
+                                ),
+                              );
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.tealPrimary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: 0,
                       ),
                       child: state.isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Text(
                               'Publicar',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                     ),
                   );

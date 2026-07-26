@@ -10,10 +10,7 @@ import '../bloc/obstacle_bloc.dart';
 class ReportObstacleBottomSheet extends StatefulWidget {
   final LatLng location;
 
-  const ReportObstacleBottomSheet({
-    super.key,
-    required this.location,
-  });
+  const ReportObstacleBottomSheet({super.key, required this.location});
 
   /// Método estático utilitário para facilitar o disparo do modal a partir de qualquer contexto
   static void show(BuildContext context, LatLng location) {
@@ -26,7 +23,8 @@ class ReportObstacleBottomSheet extends StatefulWidget {
   }
 
   @override
-  State<ReportObstacleBottomSheet> createState() => _ReportObstacleBottomSheetState();
+  State<ReportObstacleBottomSheet> createState() =>
+      _ReportObstacleBottomSheetState();
 }
 
 class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
@@ -78,11 +76,15 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return BlocListener<ObstacleBloc, ObstacleState>(
-      listenWhen: (prev, curr) => prev.isReportedSuccess != curr.isReportedSuccess && curr.isReportedSuccess,
+      listenWhen: (prev, curr) =>
+          prev.isReportedSuccess != curr.isReportedSuccess &&
+          curr.isReportedSuccess,
       listener: (context, state) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Obstáculo reportado com sucesso! Obrigado pela colaboração.'),
+            content: Text(
+              'Obstáculo reportado com sucesso! Obrigado pela colaboração.',
+            ),
             backgroundColor: AppColors.mintGreen,
           ),
         );
@@ -129,7 +131,9 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
               const SizedBox(height: 8),
               Text(
                 'Sua contribuição ajuda a construir rotas mais acessíveis para todos.',
-                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -148,49 +152,69 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
                       child: Semantics(
                         selected: isSelected,
                         button: true,
-                        hint: 'Toque duas vezes para selecionar o tipo de obstáculo: ${data.label}',
+                        hint:
+                            'Toque duas vezes para selecionar o tipo de obstáculo: ${data.label}',
                         child: InkWell(
                           onTap: () => setState(() => _selectedType = type),
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isSelected ? data.color.withValues(alpha: 0.1) : Colors.grey[50],
+                              color: isSelected
+                                  ? data.color.withValues(alpha: 0.1)
+                                  : Colors.grey[50],
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isSelected ? data.color : Colors.grey[200]!,
+                                color: isSelected
+                                    ? data.color
+                                    : Colors.grey[200]!,
                                 width: isSelected ? 1.5 : 1.0,
                               ),
                             ),
                             child: Row(
                               children: [
                                 CircleAvatar(
-                                  backgroundColor: isSelected ? data.color : Colors.grey[300],
+                                  backgroundColor: isSelected
+                                      ? data.color
+                                      : Colors.grey[300],
                                   radius: 18,
-                                  child: Icon(data.icon, color: Colors.white, size: 20),
+                                  child: Icon(
+                                    data.icon,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         data.label,
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: isSelected ? AppColors.darkBlue : Colors.grey[800],
-                                        ),
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: isSelected
+                                                  ? AppColors.darkBlue
+                                                  : Colors.grey[800],
+                                            ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         data.description,
-                                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(color: Colors.grey[600]),
                                       ),
                                     ],
                                   ),
                                 ),
                                 if (isSelected)
-                                  Icon(Icons.check_circle, color: data.color, size: 20),
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: data.color,
+                                    size: 20,
+                                  ),
                               ],
                             ),
                           ),
@@ -210,7 +234,8 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
                   maxLines: 2,
                   decoration: InputDecoration(
                     labelText: 'Descrição adicional (opcional)',
-                    hintText: 'Ex: Rampa de acesso quebrada ao lado do ponto...',
+                    hintText:
+                        'Ex: Rampa de acesso quebrada ao lado do ponto...',
                     alignLabelWithHint: true,
                     filled: true,
                     fillColor: Colors.grey[50],
@@ -220,7 +245,10 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.tealPrimary, width: 1.5),
+                      borderSide: const BorderSide(
+                        color: AppColors.tealPrimary,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -232,18 +260,19 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
                 builder: (context, state) {
                   return BaseButton(
                     label: 'Reportar Obstáculo',
-                    semanticLabel: 'Botão. Confirmar e enviar o reporte do obstáculo.',
+                    semanticLabel:
+                        'Botão. Confirmar e enviar o reporte do obstáculo.',
                     borderRadius: 12,
                     onPressed: state.isLoading
                         ? null
                         : () {
                             context.read<ObstacleBloc>().add(
-                                  ReportNewObstacleEvent(
-                                    type: _selectedType,
-                                    location: widget.location,
-                                    description: _descriptionController.text.trim(),
-                                  ),
-                                );
+                              ReportNewObstacleEvent(
+                                type: _selectedType,
+                                location: widget.location,
+                                description: _descriptionController.text.trim(),
+                              ),
+                            );
                           },
                     gradient: const LinearGradient(
                       colors: [AppColors.tealPrimary, AppColors.mintGreen],

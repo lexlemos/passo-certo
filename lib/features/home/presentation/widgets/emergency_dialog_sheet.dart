@@ -45,7 +45,9 @@ class EmergencyDialogSheet extends StatelessWidget {
     if (!launched) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Não foi possível abrir o discador. Verifique as permissões do app.'),
+          content: Text(
+            'Não foi possível abrir o discador. Verifique as permissões do app.',
+          ),
         ),
       );
     }
@@ -109,7 +111,9 @@ class EmergencyDialogSheet extends StatelessWidget {
           Text(
             'Selecione para quem deseja ligar.\nA chamada será iniciada imediatamente.',
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textMuted,
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -168,7 +172,8 @@ class _EmergencyOptionCard extends StatelessWidget {
     return Semantics(
       button: true,
       excludeSemantics: true,
-      label: 'Ligar para ${option.name}, ${option.displayNumber ?? option.number}',
+      label:
+          'Ligar para ${option.name}, ${option.displayNumber ?? option.number}',
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -177,7 +182,10 @@ class _EmergencyOptionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: option.color.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: option.color.withValues(alpha: 0.3), width: 1.5),
+            border: Border.all(
+              color: option.color.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
           ),
           child: Row(
             children: [
@@ -208,7 +216,9 @@ class _EmergencyOptionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       option.description,
-                      style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),

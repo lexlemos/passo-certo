@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/di/injection_container.dart' as di;
 import 'core/router/app_router.dart';
@@ -15,6 +16,12 @@ void main() async {
 
   // Carrega as variáveis de ambiente (.env)
   await dotenv.load(fileName: ".env");
+
+  // Inicializa o cliente Supabase com as chaves do ambiente
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
 
   // Configura o armazenamento em disco para HydratedBloc
   HydratedBloc.storage = await HydratedStorage.build(

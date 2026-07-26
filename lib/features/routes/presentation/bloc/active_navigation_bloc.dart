@@ -5,6 +5,9 @@ import 'package:equatable/equatable.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/config/app_constants.dart';
+import '../../../community/domain/entities/obstacle.dart';
+import '../../../community/domain/usecases/get_obstacles.dart';
 import '../../domain/entities/navigation_route.dart';
 import '../../domain/repositories/location_tracking_repository.dart';
 import '../../domain/services/voice_navigation_service.dart';
@@ -46,6 +49,9 @@ class ActiveNavigationState extends Equatable {
   final bool isOffRoute;
   final bool isFinished;
   final Position? lastPosition;
+  final Set<String> alertedObstacleIds;
+  final List<Obstacle> activeObstacles;
+  final Obstacle? proximityAlertObstacle;
 
   const ActiveNavigationState({
     required this.isActive,
@@ -56,6 +62,9 @@ class ActiveNavigationState extends Equatable {
     this.isOffRoute = false,
     this.isFinished = false,
     this.lastPosition,
+    this.alertedObstacleIds = const {},
+    this.activeObstacles = const [],
+    this.proximityAlertObstacle,
   });
 
   ActiveNavigationState copyWith({
@@ -67,6 +76,10 @@ class ActiveNavigationState extends Equatable {
     bool? isOffRoute,
     bool? isFinished,
     Position? lastPosition,
+    Set<String>? alertedObstacleIds,
+    List<Obstacle>? activeObstacles,
+    Obstacle? proximityAlertObstacle,
+    bool clearProximityAlert = false,
   }) {
     return ActiveNavigationState(
       isActive: isActive ?? this.isActive,
@@ -77,42 +90,56 @@ class ActiveNavigationState extends Equatable {
       isOffRoute: isOffRoute ?? this.isOffRoute,
       isFinished: isFinished ?? this.isFinished,
       lastPosition: lastPosition ?? this.lastPosition,
+      alertedObstacleIds: alertedObstacleIds ?? this.alertedObstacleIds,
+      activeObstacles: activeObstacles ?? this.activeObstacles,
+      proximityAlertObstacle: clearProximityAlert
+          ? null
+          : (proximityAlertObstacle ?? this.proximityAlertObstacle),
     );
   }
 
   @override
   List<Object?> get props => [
-        isActive,
-        currentRoute,
-        currentStep,
-        currentStepIndex,
-        distanceToNextStep,
-        isOffRoute,
-        isFinished,
-        lastPosition,
-      ];
+    isActive,
+    currentRoute,
+    currentStep,
+    currentStepIndex,
+    distanceToNextStep,
+    isOffRoute,
+    isFinished,
+    lastPosition,
+    alertedObstacleIds,
+    activeObstacles,
+    proximityAlertObstacle,
+  ];
 }
 
 // --- BLOC ---
-class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationState> with WidgetsBindingObserver {
+class ActiveNavigationBloc
+    extends Bloc<ActiveNavigationEvent, ActiveNavigationState>
+    with WidgetsBindingObserver {
   final VoiceNavigationService _voiceService;
   final LocationTrackingRepository _locationTrackingRepository;
   final CalculateAccessibleRouteUseCase _calculateAccessibleRouteUseCase;
-  
+  final GetObstaclesUseCase _getObstaclesUseCase;
+
   StreamSubscription<Position>? _positionSubscription;
   Timer? _offRouteTimer;
   bool _isRecalculating = false;
+  DateTime? _lastLocationTime;
 
   ActiveNavigationBloc({
     required VoiceNavigationService voiceService,
     required LocationTrackingRepository locationTrackingRepository,
     required CalculateAccessibleRouteUseCase calculateAccessibleRouteUseCase,
-  })  : _voiceService = voiceService,
-        _locationTrackingRepository = locationTrackingRepository,
-        _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
-        super(const ActiveNavigationState(isActive: false)) {
+    required GetObstaclesUseCase getObstaclesUseCase,
+  }) : _voiceService = voiceService,
+       _locationTrackingRepository = locationTrackingRepository,
+       _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
+       _getObstaclesUseCase = getObstaclesUseCase,
+       super(const ActiveNavigationState(isActive: false)) {
     WidgetsBinding.instance.addObserver(this);
-    
+
     on<StartNavigationEvent>(_onStartNavigation);
     on<LocationUpdatedEvent>(_onLocationUpdated);
     on<StopNavigationEvent>(_onStopNavigation);
@@ -137,34 +164,58 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
     await _voiceService.initService();
     await _locationTrackingRepository.enableWakelock();
 
-    final initialStep = event.route.steps.isNotEmpty ? event.route.steps.first : null;
+    final initialStep = event.route.steps.isNotEmpty
+        ? event.route.steps.first
+        : null;
 
-    emit(ActiveNavigationState(
-      isActive: true,
-      currentRoute: event.route,
-      currentStep: initialStep,
-      currentStepIndex: 0,
-      distanceToNextStep: 0.0,
-      isOffRoute: false,
-      isFinished: false,
-    ));
+    // Busca os obstáculos mais recentes no momento que a rota inicia
+    final obstaclesResult = await _getObstaclesUseCase();
+    final activeObstacles = obstaclesResult.fold(
+      (_) => <Obstacle>[],
+      (obstacles) => obstacles,
+    );
+
+    emit(
+      ActiveNavigationState(
+        isActive: true,
+        currentRoute: event.route,
+        currentStep: initialStep,
+        currentStepIndex: 0,
+        distanceToNextStep: 0.0,
+        isOffRoute: false,
+        isFinished: false,
+        activeObstacles: activeObstacles,
+        alertedObstacleIds: const {},
+      ),
+    );
 
     if (initialStep != null) {
-      await _voiceService.speak("Iniciando navegação guiada. ${initialStep.instruction}");
+      await _voiceService.speak(
+        "Iniciando navegação guiada. ${initialStep.instruction}",
+      );
     } else {
       await _voiceService.speak("Iniciando navegação guiada.");
     }
 
+    _lastLocationTime = null;
     _positionSubscription = _locationTrackingRepository
         .getNavigationPositionStream()
         .listen(
-      (Position position) {
-        add(LocationUpdatedEvent(position));
-      },
-      onError: (error) {
-        add(StopNavigationEvent());
-      },
-    );
+          (Position position) {
+            final now = DateTime.now();
+            // Otimização de GPS: Processa posição apenas a cada 3 segundos
+            if (_lastLocationTime != null &&
+                now.difference(_lastLocationTime!).inSeconds <
+                    AppConstants.gpsThrottleSeconds) {
+              return;
+            }
+            _lastLocationTime = now;
+            add(LocationUpdatedEvent(position));
+          },
+          onError: (error) {
+            add(StopNavigationEvent());
+          },
+        );
   }
 
   Future<void> _onLocationUpdated(
@@ -179,9 +230,15 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
 
     // 1. Detecção de Saída de Rota (Desvio > 40 metros da polyline)
     final distanceToPoly = _distanceToPolyline(userPos, route.waypoints);
-    if (distanceToPoly > 40.0) {
-      emit(state.copyWith(isOffRoute: true, lastPosition: event.position));
-      
+    if (distanceToPoly > AppConstants.routeRecalculationThresholdMeters) {
+      emit(
+        state.copyWith(
+          isOffRoute: true,
+          lastPosition: event.position,
+          clearProximityAlert: true,
+        ),
+      );
+
       // Inicia timer de 5 segundos se ele já não estiver ativo
       if (_offRouteTimer == null || !_offRouteTimer!.isActive) {
         _offRouteTimer = Timer(const Duration(seconds: 5), () {
@@ -196,78 +253,142 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
         _offRouteTimer = null;
       }
       if (state.isOffRoute) {
-        emit(state.copyWith(isOffRoute: false, lastPosition: event.position));
+        emit(
+          state.copyWith(
+            isOffRoute: false,
+            lastPosition: event.position,
+            clearProximityAlert: true,
+          ),
+        );
       }
     }
 
-    // 2. Acompanhamento dos Passos da Rota
+    // 2. Consciência Espacial: Verificação de proximidade de obstáculos
+    bool proximityAlertTriggered = false;
+    for (final obstacle in state.activeObstacles) {
+      if (state.alertedObstacleIds.contains(obstacle.id)) continue;
+
+      final dist = distanceCalc.as(
+        LengthUnit.Meter,
+        userPos,
+        LatLng(obstacle.latitude, obstacle.longitude),
+      );
+
+      // Alerta disparado se estiver a menos de 15 metros do obstáculo
+      if (dist < AppConstants.obstacleProximityRadiusMeters) {
+        final newAlerted = Set<String>.from(state.alertedObstacleIds)
+          ..add(obstacle.id);
+
+        await _voiceService.speak(
+          "Atenção, obstáculo reportado à frente: ${obstacle.description}",
+        );
+
+        emit(
+          state.copyWith(
+            alertedObstacleIds: newAlerted,
+            proximityAlertObstacle: obstacle,
+          ),
+        );
+
+        proximityAlertTriggered = true;
+        // Interrompe loop para não acumular alertas (TTS) em obstáculos aglomerados
+        break;
+      }
+    }
+
+    // 3. Acompanhamento dos Passos da Rota
     int stepIndex = state.currentStepIndex;
     final steps = route.steps;
 
     if (stepIndex < steps.length) {
       final nextStep = steps[stepIndex];
-      final double distanceToStep = distanceCalc.as(
-        LengthUnit.Meter,
-        userPos,
-        nextStep.coordinate,
-      ).toDouble();
+      final double distanceToStep = distanceCalc
+          .as(LengthUnit.Meter, userPos, nextStep.coordinate)
+          .toDouble();
 
       // Caso chegue a menos de 15 metros da conversão
-      if (distanceToStep < 15.0) {
-        // Enuncia a instrução
-        await _voiceService.speak(nextStep.instruction);
+      if (distanceToStep < AppConstants.obstacleProximityRadiusMeters) {
+        // Enuncia a instrução apenas se não houve alerta de obstáculo agora
+        if (!proximityAlertTriggered) {
+          await _voiceService.speak(nextStep.instruction);
+        }
 
         // Avança para o próximo passo se disponível
         stepIndex++;
-        
+
         final isFinished = stepIndex >= steps.length;
-        
+
         if (isFinished) {
-          await _voiceService.speak("Você chegou ao seu destino.");
-          emit(state.copyWith(
-            lastPosition: event.position,
-            currentStepIndex: stepIndex,
-            distanceToNextStep: 0.0,
-            isOffRoute: false,
-            isFinished: true,
-          ));
+          if (!proximityAlertTriggered) {
+            await _voiceService.speak("Você chegou ao seu destino.");
+          }
+          emit(
+            state.copyWith(
+              lastPosition: event.position,
+              currentStepIndex: stepIndex,
+              distanceToNextStep: 0.0,
+              isOffRoute: false,
+              isFinished: true,
+              clearProximityAlert: !proximityAlertTriggered,
+            ),
+          );
           add(StopNavigationEvent());
         } else {
           final updatedStep = steps[stepIndex];
-          emit(state.copyWith(
-            lastPosition: event.position,
-            currentStepIndex: stepIndex,
-            currentStep: updatedStep,
-            distanceToNextStep: 0.0,
-            isOffRoute: false,
-            isFinished: false,
-          ));
+          emit(
+            state.copyWith(
+              lastPosition: event.position,
+              currentStepIndex: stepIndex,
+              currentStep: updatedStep,
+              distanceToNextStep: 0.0,
+              isOffRoute: false,
+              isFinished: false,
+              clearProximityAlert: !proximityAlertTriggered,
+            ),
+          );
         }
       } else {
-        emit(state.copyWith(
-          lastPosition: event.position,
-          distanceToNextStep: distanceToStep,
-          isOffRoute: false,
-          isFinished: false,
-        ));
+        if (!proximityAlertTriggered) {
+          emit(
+            state.copyWith(
+              lastPosition: event.position,
+              distanceToNextStep: distanceToStep,
+              isOffRoute: false,
+              isFinished: false,
+              clearProximityAlert: true,
+            ),
+          );
+        }
       }
     } else {
-      emit(state.copyWith(
-        lastPosition: event.position,
-        isOffRoute: false,
-        isFinished: true,
-      ));
+      if (!proximityAlertTriggered) {
+        emit(
+          state.copyWith(
+            lastPosition: event.position,
+            isOffRoute: false,
+            isFinished: true,
+            clearProximityAlert: true,
+          ),
+        );
+      }
       add(StopNavigationEvent());
     }
   }
+
   Future<void> _onRecalculateRouteTriggered(
     RecalculateRouteTriggeredEvent event,
     Emitter<ActiveNavigationState> emit,
   ) async {
-    if (_isRecalculating || state.currentRoute == null || state.lastPosition == null) return;
+    if (_isRecalculating ||
+        state.currentRoute == null ||
+        state.lastPosition == null) {
+      return;
+    }
     _isRecalculating = true;
 
-    await _voiceService.speak("Você saiu da rota. Recalculando novo trajeto acessível.");
+    await _voiceService.speak(
+      "Você saiu da rota. Recalculando novo trajeto acessível.",
+    );
     if (!state.isActive) {
       _isRecalculating = false;
       return;
@@ -275,7 +396,7 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
 
     try {
       final destCoord = state.currentRoute!.waypoints.last;
-      
+
       final result = await _calculateAccessibleRouteUseCase(
         originLat: state.lastPosition!.latitude,
         originLng: state.lastPosition!.longitude,
@@ -283,6 +404,7 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
         destLng: destCoord.longitude,
         avoidStairs: false,
         requiresTactilePaving: false,
+        activeObstacles: state.activeObstacles,
       );
 
       if (!state.isActive) {
@@ -297,18 +419,24 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
         (routes) async {
           if (routes.isNotEmpty) {
             final newRoute = routes.first;
-            final initialStep = newRoute.steps.isNotEmpty ? newRoute.steps.first : null;
+            final initialStep = newRoute.steps.isNotEmpty
+                ? newRoute.steps.first
+                : null;
 
-            emit(state.copyWith(
-              currentRoute: newRoute,
-              currentStep: initialStep,
-              currentStepIndex: 0,
-              distanceToNextStep: 0.0,
-              isOffRoute: false,
-              isFinished: false,
-            ));
+            emit(
+              state.copyWith(
+                currentRoute: newRoute,
+                currentStep: initialStep,
+                currentStepIndex: 0,
+                distanceToNextStep: 0.0,
+                isOffRoute: false,
+                isFinished: false,
+              ),
+            );
 
-            await _voiceService.speak("Nova rota calculada. Siga as instruções.");
+            await _voiceService.speak(
+              "Nova rota calculada. Siga as instruções.",
+            );
           }
           _offRouteTimer = null;
         },
@@ -323,13 +451,13 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
   /// Calcula a menor distância aproximada do usuário até a linha da rota
   double _distanceToPolyline(LatLng point, List<RouteCoordinate> waypoints) {
     if (waypoints.isEmpty) return 0.0;
-    
+
     double minDistance = double.infinity;
     final distanceCalculator = const Distance();
 
     for (int i = 0; i < waypoints.length - 1; i++) {
       final p1 = LatLng(waypoints[i].latitude, waypoints[i].longitude);
-      final p2 = LatLng(waypoints[i+1].latitude, waypoints[i+1].longitude);
+      final p2 = LatLng(waypoints[i + 1].latitude, waypoints[i + 1].longitude);
 
       final dist = _distanceToSegment(point, p1, p2, distanceCalculator);
       if (dist < minDistance) {
@@ -350,15 +478,14 @@ class ActiveNavigationBloc extends Bloc<ActiveNavigationEvent, ActiveNavigationS
     final double denominator = dx * dx + dy * dy;
     if (denominator == 0) return calc.as(LengthUnit.Meter, p, a);
 
-    final double t = ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) / denominator;
+    final double t =
+        ((p.longitude - a.longitude) * dx + (p.latitude - a.latitude) * dy) /
+        denominator;
 
     if (t <= 0) return calc.as(LengthUnit.Meter, p, a);
     if (t >= 1) return calc.as(LengthUnit.Meter, p, b);
 
-    final LatLng projection = LatLng(
-      a.latitude + t * dy,
-      a.longitude + t * dx,
-    );
+    final LatLng projection = LatLng(a.latitude + t * dy, a.longitude + t * dx);
     return calc.as(LengthUnit.Meter, p, projection);
   }
 

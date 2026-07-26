@@ -51,23 +51,29 @@ class NavigationPreferencesSection extends StatelessWidget {
                             const SizedBox(height: 16),
                             ProfileSwitchRow(
                               title: 'Evitar Escadas',
-                              subtitle: 'Prioriza rotas com rampas ou elevadores.',
+                              subtitle:
+                                  'Prioriza rotas com rampas ou elevadores.',
                               value: state.avoidStairs,
                               onChanged: (val) {
-                                context
-                                    .read<ProfileNavigationBloc>()
-                                    .add(ToggleAvoidStairsEvent(value: val));
+                                context.read<ProfileNavigationBloc>().add(
+                                  ToggleAvoidStairsEvent(value: val),
+                                );
                               },
                             ),
-                            Divider(height: 32, color: Colors.grey[200], thickness: 1),
+                            Divider(
+                              height: 32,
+                              color: Colors.grey[200],
+                              thickness: 1,
+                            ),
                             ProfileSwitchRow(
                               title: 'Tempo Extra em Cruzamentos',
-                              subtitle: 'Calcula rotas assumindo um ritmo de caminhada menor.',
+                              subtitle:
+                                  'Calcula rotas assumindo um ritmo de caminhada menor.',
                               value: state.extraCrossingTime,
                               onChanged: (val) {
-                                context
-                                    .read<ProfileNavigationBloc>()
-                                    .add(ToggleExtraCrossingTimeEvent(value: val));
+                                context.read<ProfileNavigationBloc>().add(
+                                  ToggleExtraCrossingTimeEvent(value: val),
+                                );
                               },
                             ),
                           ],
@@ -109,7 +115,6 @@ class NavigationPreferencesSection extends StatelessWidget {
                             ),
                             const SizedBox(height: 16),
                             Container(
-
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.grey[100],
@@ -117,12 +122,13 @@ class NavigationPreferencesSection extends StatelessWidget {
                               ),
                               child: ProfileSwitchRow(
                                 title: 'Sinais Semafóricos Sonoros',
-                                subtitle: 'Integração com semáforos inteligentes.',
+                                subtitle:
+                                    'Integração com semáforos inteligentes.',
                                 value: state.soundTrafficSignals,
                                 onChanged: (val) {
-                                  context
-                                      .read<ProfileNavigationBloc>()
-                                      .add(ToggleSoundTrafficSignalsEvent(value: val));
+                                  context.read<ProfileNavigationBloc>().add(
+                                    ToggleSoundTrafficSignalsEvent(value: val),
+                                  );
                                 },
                               ),
                             ),

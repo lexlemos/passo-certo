@@ -78,18 +78,19 @@ class ProfileNavigationState extends Equatable {
 
   @override
   List<Object?> get props => [
-        voiceNavigation,
-        highContrast,
-        textSize,
-        avoidStairs,
-        extraCrossingTime,
-        soundTrafficSignals,
-        hasError,
-      ];
+    voiceNavigation,
+    highContrast,
+    textSize,
+    avoidStairs,
+    extraCrossingTime,
+    soundTrafficSignals,
+    hasError,
+  ];
 }
 
 // --- BLOC ---
-class ProfileNavigationBloc extends HydratedBloc<ProfileNavigationEvent, ProfileNavigationState> {
+class ProfileNavigationBloc
+    extends HydratedBloc<ProfileNavigationEvent, ProfileNavigationState> {
   ProfileNavigationBloc() : super(const ProfileNavigationState()) {
     on<LoadNavigationSettingsEvent>(_onLoadNavigationSettings);
     on<ToggleVoiceNavigationEvent>(_onToggleVoiceNavigation);

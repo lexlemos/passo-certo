@@ -24,7 +24,9 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
     super.initState();
     final bloc = context.read<RoutePlanningBloc>();
     _originController = TextEditingController(text: bloc.state.originText);
-    _destinationController = TextEditingController(text: bloc.state.destinationText);
+    _destinationController = TextEditingController(
+      text: bloc.state.destinationText,
+    );
   }
 
   @override
@@ -64,7 +66,10 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
           child: Stack(
             children: [
               SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -80,9 +85,9 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
                     const SizedBox(height: 32),
                     const RoutesHeader(),
                     const SizedBox(height: 16),
-                    
+
                     const RouteListView(),
-                    
+
                     const SizedBox(height: 24),
                     const RouteMapSection(),
                     const SizedBox(height: 24),
@@ -139,4 +144,3 @@ class RoutesHeader extends StatelessWidget {
     );
   }
 }
-

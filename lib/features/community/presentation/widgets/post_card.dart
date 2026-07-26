@@ -69,15 +69,20 @@ class PostCard extends StatelessWidget {
                             Expanded(
                               child: Row(
                                 children: [
-                                  Icon(Icons.location_on, size: 11, color: Colors.grey[400]),
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 11,
+                                    color: Colors.grey[400],
+                                  ),
                                   const SizedBox(width: 2),
                                   Flexible(
                                     child: Text(
                                       post.location,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: Colors.grey[500],
-                                        fontSize: 11,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: Colors.grey[500],
+                                            fontSize: 11,
+                                          ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -112,10 +117,16 @@ class PostCard extends StatelessWidget {
               children: [
                 // Like
                 _ActionButton(
-                  icon: post.likedByMe ? Icons.thumb_up : Icons.thumb_up_outlined,
+                  icon: post.likedByMe
+                      ? Icons.thumb_up
+                      : Icons.thumb_up_outlined,
                   label: '${post.likes}',
-                  color: post.likedByMe ? AppColors.tealPrimary : Colors.grey[500]!,
-                  onTap: () => context.read<CommunityBloc>().add(ToggleLikeEvent(post.id)),
+                  color: post.likedByMe
+                      ? AppColors.tealPrimary
+                      : Colors.grey[500]!,
+                  onTap: () => context.read<CommunityBloc>().add(
+                    ToggleLikeEvent(post.id),
+                  ),
                   semanticLabel: post.likedByMe
                       ? 'Retirar curtida. ${post.likes} curtidas.'
                       : 'Curtir publicação. ${post.likes} curtidas.',
@@ -219,31 +230,31 @@ class _CategoryBadge extends StatelessWidget {
   _BadgeConfig _badgeConfig(PostCategory category) {
     switch (category) {
       case PostCategory.danger:
-        return _BadgeConfig(
+        return const _BadgeConfig(
           icon: Icons.warning_amber_rounded,
           label: 'Perigo',
           color: AppColors.emergencyRed,
         );
       case PostCategory.tip:
-        return _BadgeConfig(
+        return const _BadgeConfig(
           icon: Icons.lightbulb_outline,
           label: 'Dica Segura',
           color: AppColors.mintGreen,
         );
       case PostCategory.praise:
-        return _BadgeConfig(
+        return const _BadgeConfig(
           icon: Icons.star_outline,
           label: 'Elogio',
           color: AppColors.tealPrimary,
         );
       case PostCategory.accessibility:
-        return _BadgeConfig(
+        return const _BadgeConfig(
           icon: Icons.accessible,
           label: 'Acessibilidade',
           color: AppColors.alertBlue,
         );
       default:
-        return _BadgeConfig(
+        return const _BadgeConfig(
           icon: Icons.info_outline,
           label: 'Geral',
           color: AppColors.spaceBlue,
@@ -256,7 +267,11 @@ class _BadgeConfig {
   final IconData icon;
   final String label;
   final Color color;
-  const _BadgeConfig({required this.icon, required this.label, required this.color});
+  const _BadgeConfig({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 }
 
 class _ActionButton extends StatelessWidget {
@@ -291,7 +306,11 @@ class _ActionButton extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   label,
-                  style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ],

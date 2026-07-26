@@ -40,14 +40,22 @@ class UpdateOriginEvent extends RoutePlanningEvent {
   final String originText;
   final double originLat;
   final double originLng;
-  UpdateOriginEvent({required this.originText, required this.originLat, required this.originLng});
+  UpdateOriginEvent({
+    required this.originText,
+    required this.originLat,
+    required this.originLng,
+  });
 }
 
 class UpdateDestinationEvent extends RoutePlanningEvent {
   final String destinationText;
   final double destLat;
   final double destLng;
-  UpdateDestinationEvent({required this.destinationText, required this.destLat, required this.destLng});
+  UpdateDestinationEvent({
+    required this.destinationText,
+    required this.destLat,
+    required this.destLng,
+  });
 }
 
 class CalculateRouteEvent extends RoutePlanningEvent {}
@@ -90,18 +98,18 @@ class RoutePlanningState extends Equatable {
 
   /// Estado vazio seguro para inicialização — sem dados mock.
   const RoutePlanningState._empty()
-      : originText = '',
-        originLat = null,
-        originLng = null,
-        destinationText = '',
-        destLat = null,
-        destLng = null,
-        selectedFilter = 'accessible',
-        routes = const [],
-        recommendedRoute = null,
-        selectedRouteIndex = 0,
-        isLoading = false,
-        errorMessage = null;
+    : originText = '',
+      originLat = null,
+      originLng = null,
+      destinationText = '',
+      destLat = null,
+      destLng = null,
+      selectedFilter = 'accessible',
+      routes = const [],
+      recommendedRoute = null,
+      selectedRouteIndex = 0,
+      isLoading = false,
+      errorMessage = null;
 
   RoutePlanningState copyWith({
     String? originText,
@@ -135,19 +143,19 @@ class RoutePlanningState extends Equatable {
 
   @override
   List<Object?> get props => [
-        originText,
-        originLat,
-        originLng,
-        destinationText,
-        destLat,
-        destLng,
-        selectedFilter,
-        routes,
-        recommendedRoute,
-        selectedRouteIndex,
-        isLoading,
-        errorMessage,
-      ];
+    originText,
+    originLat,
+    originLng,
+    destinationText,
+    destLat,
+    destLng,
+    selectedFilter,
+    routes,
+    recommendedRoute,
+    selectedRouteIndex,
+    isLoading,
+    errorMessage,
+  ];
 }
 
 // --- BLOC ---
@@ -160,10 +168,10 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
     required CalculateAccessibleRouteUseCase calculateAccessibleRouteUseCase,
     required ProfileNavigationBloc profileNavigationBloc,
     required GetCurrentLocationPlaceUseCase getCurrentLocationPlaceUseCase,
-  })  : _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
-        _profileNavigationBloc = profileNavigationBloc,
-        _getCurrentLocationPlaceUseCase = getCurrentLocationPlaceUseCase,
-        super(const RoutePlanningState._empty()) {
+  }) : _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
+       _profileNavigationBloc = profileNavigationBloc,
+       _getCurrentLocationPlaceUseCase = getCurrentLocationPlaceUseCase,
+       super(const RoutePlanningState._empty()) {
     on<LoadRoutesEvent>(_onLoadRoutes);
     on<SwapLocationsEvent>(_onSwapLocations);
     on<SelectFilterEvent>(_onSelectFilter);
@@ -181,29 +189,43 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
   }
 
   /// Carrega as rotas e calcula a recomendada de forma assíncrona a partir da camada de dados.
-  Future<void> _onLoadRoutes(LoadRoutesEvent event, Emitter<RoutePlanningState> emit) async {
+  Future<void> _onLoadRoutes(
+    LoadRoutesEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) async {
     // Busca automaticamente a localização atual do usuário para o campo de origem.
     // O destino fica vazio para o usuário buscar a rota que preferir de acordo com sua proximidade real.
     add(FetchCurrentLocationForOriginEvent());
   }
 
-  void _onSwapLocations(SwapLocationsEvent event, Emitter<RoutePlanningState> emit) {
-    emit(state.copyWith(
-      originText: state.destinationText,
-      originLat: state.destLat,
-      originLng: state.destLng,
-      destinationText: state.originText,
-      destLat: state.originLat,
-      destLng: state.originLng,
-    ));
+  void _onSwapLocations(
+    SwapLocationsEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        originText: state.destinationText,
+        originLat: state.destLat,
+        originLng: state.destLng,
+        destinationText: state.originText,
+        destLat: state.originLat,
+        destLng: state.originLng,
+      ),
+    );
     add(CalculateRouteEvent());
   }
 
-  void _onSelectFilter(SelectFilterEvent event, Emitter<RoutePlanningState> emit) {
+  void _onSelectFilter(
+    SelectFilterEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
     emit(state.copyWith(selectedFilter: event.filter));
   }
 
-  Future<void> _onSearchRoutes(SearchRoutesEvent event, Emitter<RoutePlanningState> emit) async {
+  Future<void> _onSearchRoutes(
+    SearchRoutesEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) async {
     double originLat = -10.9472;
     double originLng = -37.0731;
     double destLat = -10.9350;
@@ -221,55 +243,78 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
       destLng = -37.0731;
     }
 
-    emit(state.copyWith(
-      originText: event.originText,
-      originLat: originLat,
-      originLng: originLng,
-      destinationText: event.destinationText,
-      destLat: destLat,
-      destLng: destLng,
-    ));
+    emit(
+      state.copyWith(
+        originText: event.originText,
+        originLat: originLat,
+        originLng: originLng,
+        destinationText: event.destinationText,
+        destLat: destLat,
+        destLng: destLng,
+      ),
+    );
 
     add(CalculateRouteEvent());
   }
 
-  void _onSelectRoute(SelectRouteEvent event, Emitter<RoutePlanningState> emit) {
+  void _onSelectRoute(
+    SelectRouteEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
     emit(state.copyWith(selectedRouteIndex: event.routeIndex));
   }
 
-  void _onUpdateOrigin(UpdateOriginEvent event, Emitter<RoutePlanningState> emit) {
-    emit(state.copyWith(
-      originText: event.originText,
-      originLat: event.originLat,
-      originLng: event.originLng,
-    ));
+  void _onUpdateOrigin(
+    UpdateOriginEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        originText: event.originText,
+        originLat: event.originLat,
+        originLng: event.originLng,
+      ),
+    );
   }
 
-  void _onUpdateDestination(UpdateDestinationEvent event, Emitter<RoutePlanningState> emit) {
-    emit(state.copyWith(
-      destinationText: event.destinationText,
-      destLat: event.destLat,
-      destLng: event.destLng,
-    ));
+  void _onUpdateDestination(
+    UpdateDestinationEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        destinationText: event.destinationText,
+        destLat: event.destLat,
+        destLng: event.destLng,
+      ),
+    );
   }
 
-  Future<void> _onCalculateRoute(CalculateRouteEvent event, Emitter<RoutePlanningState> emit) async {
+  Future<void> _onCalculateRoute(
+    CalculateRouteEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) async {
     final originLat = state.originLat;
     final originLng = state.originLng;
     final destLat = state.destLat;
     final destLng = state.destLng;
 
-    if (originLat == null || originLng == null || destLat == null || destLng == null) {
+    if (originLat == null ||
+        originLng == null ||
+        destLat == null ||
+        destLng == null) {
       return;
     }
 
-    emit(state.copyWith(
-      routes: const [],
-      recommendedRoute: null,
-      selectedRouteIndex: 0,
-      isLoading: true,
-      errorMessage: () => null,
-    ));
+    emit(
+      state.copyWith(
+        routes: const [],
+        recommendedRoute: null,
+        selectedRouteIndex: 0,
+        isLoading: true,
+        errorMessage: () => null,
+      ),
+    );
 
     final profileState = _profileNavigationBloc.state;
     final avoidStairs = profileState.avoidStairs;
@@ -286,22 +331,26 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
 
     result.fold(
       (failure) {
-        emit(state.copyWith(
-          routes: const [],
-          recommendedRoute: null,
-          selectedRouteIndex: 0,
-          isLoading: false,
-          errorMessage: () => failure.message,
-        ));
+        emit(
+          state.copyWith(
+            routes: const [],
+            recommendedRoute: null,
+            selectedRouteIndex: 0,
+            isLoading: false,
+            errorMessage: () => failure.message,
+          ),
+        );
       },
       (routes) {
-        emit(state.copyWith(
-          routes: routes,
-          recommendedRoute: routes.isNotEmpty ? routes.first : null,
-          selectedRouteIndex: 0,
-          isLoading: false,
-          errorMessage: () => null,
-        ));
+        emit(
+          state.copyWith(
+            routes: routes,
+            recommendedRoute: routes.isNotEmpty ? routes.first : null,
+            selectedRouteIndex: 0,
+            isLoading: false,
+            errorMessage: () => null,
+          ),
+        );
       },
     );
   }
@@ -315,41 +364,51 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
 
       final place = await _getCurrentLocationPlaceUseCase();
 
-      emit(state.copyWith(
-        originText: place.name,
-        originLat: place.latitude,
-        originLng: place.longitude,
-      ));
+      emit(
+        state.copyWith(
+          originText: place.name,
+          originLat: place.latitude,
+          originLng: place.longitude,
+        ),
+      );
 
       if (state.destLat != null && state.destLng != null) {
         add(CalculateRouteEvent());
       }
     } catch (_) {
-      emit(state.copyWith(
-        originText: 'Falha ao obter localização',
-      ));
+      emit(state.copyWith(originText: 'Falha ao obter localização'));
     }
   }
 
-  void _onClearOrigin(ClearOriginEvent event, Emitter<RoutePlanningState> emit) {
-    emit(state.copyWith(
-      originText: '',
-      originLat: null,
-      originLng: null,
-      routes: const [],
-      recommendedRoute: null,
-      selectedRouteIndex: 0,
-    ));
+  void _onClearOrigin(
+    ClearOriginEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        originText: '',
+        originLat: null,
+        originLng: null,
+        routes: const [],
+        recommendedRoute: null,
+        selectedRouteIndex: 0,
+      ),
+    );
   }
 
-  void _onClearDestination(ClearDestinationEvent event, Emitter<RoutePlanningState> emit) {
-    emit(state.copyWith(
-      destinationText: '',
-      destLat: null,
-      destLng: null,
-      routes: const [],
-      recommendedRoute: null,
-      selectedRouteIndex: 0,
-    ));
+  void _onClearDestination(
+    ClearDestinationEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        destinationText: '',
+        destLat: null,
+        destLng: null,
+        routes: const [],
+        recommendedRoute: null,
+        selectedRouteIndex: 0,
+      ),
+    );
   }
 }

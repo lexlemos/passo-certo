@@ -31,7 +31,8 @@ class RouteSearchCard extends StatelessWidget {
           previous.selectedFilter != current.selectedFilter,
       builder: (context, state) {
         return BaseCard(
-          semanticLabel: "Formulário de busca de rotas com preenchimento automático",
+          semanticLabel:
+              "Formulário de busca de rotas com preenchimento automático",
           child: Column(
             children: [
               Stack(
@@ -43,12 +44,15 @@ class RouteSearchCard extends StatelessWidget {
                       children: [
                         // Origem Autocomplete
                         Semantics(
-                          label: 'Campo de texto da Origem. Digite o endereço de partida.',
+                          label:
+                              'Campo de texto da Origem. Digite o endereço de partida.',
                           child: TypeAheadField<Place>(
                             controller: originController,
                             suggestionsCallback: (pattern) async {
                               if (pattern.trim().length < 3) return const [];
-                              final planningState = context.read<RoutePlanningBloc>().state;
+                              final planningState = context
+                                  .read<RoutePlanningBloc>()
+                                  .state;
                               return await searchAddressUseCase(
                                 pattern,
                                 userLat: planningState.originLat,
@@ -57,17 +61,25 @@ class RouteSearchCard extends StatelessWidget {
                             },
                             itemBuilder: (context, place) {
                               return ListTile(
-                                leading: const Icon(Icons.location_on, color: AppTheme.spaceBlue),
-                                title: Text(place.name, style: const TextStyle(fontSize: 14)),
+                                leading: const Icon(
+                                  Icons.location_on,
+                                  color: AppTheme.spaceBlue,
+                                ),
+                                title: Text(
+                                  place.name,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               );
                             },
                             onSelected: (place) {
                               originController.text = place.name;
-                              context.read<RoutePlanningBloc>().add(UpdateOriginEvent(
-                                originText: place.name,
-                                originLat: place.latitude,
-                                originLng: place.longitude,
-                              ));
+                              context.read<RoutePlanningBloc>().add(
+                                UpdateOriginEvent(
+                                  originText: place.name,
+                                  originLat: place.latitude,
+                                  originLng: place.longitude,
+                                ),
+                              );
                             },
                             builder: (context, controller, focusNode) {
                               return TextFormField(
@@ -76,7 +88,10 @@ class RouteSearchCard extends StatelessWidget {
                                 decoration: InputDecoration(
                                   labelText: 'Origem',
                                   hintText: 'Sua localização atual',
-                                  prefixIcon: const Icon(Icons.my_location, color: AppTheme.spaceBlue),
+                                  prefixIcon: const Icon(
+                                    Icons.my_location,
+                                    color: AppTheme.spaceBlue,
+                                  ),
                                   suffixIcon: ValueListenableBuilder<TextEditingValue>(
                                     valueListenable: controller,
                                     builder: (context, value, _) {
@@ -89,22 +104,33 @@ class RouteSearchCard extends StatelessWidget {
                                               button: true,
                                               label: 'Limpar texto da origem',
                                               child: IconButton(
-                                                icon: const Icon(Icons.clear, size: 20),
+                                                icon: const Icon(
+                                                  Icons.clear,
+                                                  size: 20,
+                                                ),
                                                 onPressed: () {
                                                   controller.clear();
-                                                  context.read<RoutePlanningBloc>().add(ClearOriginEvent());
+                                                  context
+                                                      .read<RoutePlanningBloc>()
+                                                      .add(ClearOriginEvent());
                                                 },
                                               ),
                                             ),
                                           Semantics(
                                             button: true,
-                                            label: 'Botão Minha Localização. Obter localização atual via GPS.',
+                                            label:
+                                                'Botão Minha Localização. Obter localização atual via GPS.',
                                             child: IconButton(
-                                              icon: const Icon(Icons.my_location, color: AppTheme.spaceBlue),
+                                              icon: const Icon(
+                                                Icons.my_location,
+                                                color: AppTheme.spaceBlue,
+                                              ),
                                               onPressed: () {
-                                                context.read<RoutePlanningBloc>().add(
-                                                  FetchCurrentLocationForOriginEvent(),
-                                                );
+                                                context
+                                                    .read<RoutePlanningBloc>()
+                                                    .add(
+                                                      FetchCurrentLocationForOriginEvent(),
+                                                    );
                                               },
                                             ),
                                           ),
@@ -126,12 +152,15 @@ class RouteSearchCard extends StatelessWidget {
                         const SizedBox(height: 12),
                         // Destino Autocomplete
                         Semantics(
-                          label: 'Campo de texto do Destino. Digite o endereço de destino.',
+                          label:
+                              'Campo de texto do Destino. Digite o endereço de destino.',
                           child: TypeAheadField<Place>(
                             controller: destinationController,
                             suggestionsCallback: (pattern) async {
                               if (pattern.trim().length < 3) return const [];
-                              final planningState = context.read<RoutePlanningBloc>().state;
+                              final planningState = context
+                                  .read<RoutePlanningBloc>()
+                                  .state;
                               return await searchAddressUseCase(
                                 pattern,
                                 userLat: planningState.originLat,
@@ -140,17 +169,25 @@ class RouteSearchCard extends StatelessWidget {
                             },
                             itemBuilder: (context, place) {
                               return ListTile(
-                                leading: const Icon(Icons.location_on, color: AppTheme.mintGreen),
-                                title: Text(place.name, style: const TextStyle(fontSize: 14)),
+                                leading: const Icon(
+                                  Icons.location_on,
+                                  color: AppTheme.mintGreen,
+                                ),
+                                title: Text(
+                                  place.name,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
                               );
                             },
                             onSelected: (place) {
                               destinationController.text = place.name;
-                              context.read<RoutePlanningBloc>().add(UpdateDestinationEvent(
-                                destinationText: place.name,
-                                destLat: place.latitude,
-                                destLng: place.longitude,
-                              ));
+                              context.read<RoutePlanningBloc>().add(
+                                UpdateDestinationEvent(
+                                  destinationText: place.name,
+                                  destLat: place.latitude,
+                                  destLng: place.longitude,
+                                ),
+                              );
                             },
                             builder: (context, controller, focusNode) {
                               return TextFormField(
@@ -159,24 +196,37 @@ class RouteSearchCard extends StatelessWidget {
                                 decoration: InputDecoration(
                                   labelText: 'Destino',
                                   hintText: 'Para onde quer ir?',
-                                  prefixIcon: const Icon(Icons.location_on, color: AppTheme.mintGreen),
-                                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                                    valueListenable: controller,
-                                    builder: (context, value, _) {
-                                      if (value.text.isEmpty) return const SizedBox.shrink();
-                                      return Semantics(
-                                        button: true,
-                                        label: 'Limpar texto do destino',
-                                        child: IconButton(
-                                          icon: const Icon(Icons.clear, size: 20),
-                                          onPressed: () {
-                                            controller.clear();
-                                            context.read<RoutePlanningBloc>().add(ClearDestinationEvent());
-                                          },
-                                        ),
-                                      );
-                                    },
+                                  prefixIcon: const Icon(
+                                    Icons.location_on,
+                                    color: AppTheme.mintGreen,
                                   ),
+                                  suffixIcon:
+                                      ValueListenableBuilder<TextEditingValue>(
+                                        valueListenable: controller,
+                                        builder: (context, value, _) {
+                                          if (value.text.isEmpty) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Semantics(
+                                            button: true,
+                                            label: 'Limpar texto do destino',
+                                            child: IconButton(
+                                              icon: const Icon(
+                                                Icons.clear,
+                                                size: 20,
+                                              ),
+                                              onPressed: () {
+                                                controller.clear();
+                                                context
+                                                    .read<RoutePlanningBloc>()
+                                                    .add(
+                                                      ClearDestinationEvent(),
+                                                    );
+                                              },
+                                            ),
+                                          );
+                                        },
+                                      ),
                                   filled: true,
                                   fillColor: AppTheme.softGreyBg,
                                   border: OutlineInputBorder(
@@ -198,14 +248,17 @@ class RouteSearchCard extends StatelessWidget {
                       label: "Inverter origem e destino",
                       child: FloatingActionButton.small(
                         onPressed: () => context.read<RoutePlanningBloc>().add(
-                              SwapLocationsEvent(
-                                originText: originController.text,
-                                destinationText: destinationController.text,
-                              ),
-                            ),
+                          SwapLocationsEvent(
+                            originText: originController.text,
+                            destinationText: destinationController.text,
+                          ),
+                        ),
                         backgroundColor: theme.scaffoldBackgroundColor,
                         elevation: 2,
-                        child: const Icon(Icons.swap_vert, color: AppTheme.spaceBlue),
+                        child: const Icon(
+                          Icons.swap_vert,
+                          color: AppTheme.spaceBlue,
+                        ),
                       ),
                     ),
                   ),
@@ -239,38 +292,51 @@ class RouteSearchCard extends StatelessWidget {
               const SizedBox(height: 16),
               BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
                 builder: (context, planningState) {
-                  final activeNavState = context.watch<ActiveNavigationBloc>().state;
+                  final activeNavState = context
+                      .watch<ActiveNavigationBloc>()
+                      .state;
 
                   if (activeNavState.isActive) {
                     return BaseButton(
                       label: 'Parar Navegação',
                       semanticLabel: 'Botão. Parar navegação guiada ativa.',
                       icon: const Icon(Icons.stop, color: Colors.white),
-                      gradient: const LinearGradient(colors: [AppTheme.emergencyRed, Colors.redAccent]),
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.emergencyRed, Colors.redAccent],
+                      ),
                       onPressed: () {
-                        context.read<ActiveNavigationBloc>().add(StopNavigationEvent());
+                        context.read<ActiveNavigationBloc>().add(
+                          StopNavigationEvent(),
+                        );
                       },
                     );
                   }
 
                   if (planningState.routes.isNotEmpty) {
-                    final selectedRoute = planningState.routes[planningState.selectedRouteIndex];
+                    final selectedRoute =
+                        planningState.routes[planningState.selectedRouteIndex];
                     return BaseButton(
                       label: 'Buscar Rota',
-                      semanticLabel: 'Botão. Iniciar navegação guiada por voz para a rota selecionada.',
+                      semanticLabel:
+                          'Botão. Iniciar navegação guiada por voz para a rota selecionada.',
                       icon: const Icon(Icons.navigation, color: Colors.white),
                       onPressed: () {
-                        context.read<ActiveNavigationBloc>().add(StartNavigationEvent(selectedRoute));
+                        context.read<ActiveNavigationBloc>().add(
+                          StartNavigationEvent(selectedRoute),
+                        );
                       },
                     );
                   }
 
-                  final canSearch = planningState.originLat != null && 
-                                    planningState.destLat != null &&
-                                    !planningState.isLoading;
+                  final canSearch =
+                      planningState.originLat != null &&
+                      planningState.destLat != null &&
+                      !planningState.isLoading;
 
                   return BaseButton(
-                    label: planningState.isLoading ? 'Buscando...' : 'Buscar Rotas',
+                    label: planningState.isLoading
+                        ? 'Buscando...'
+                        : 'Buscar Rotas',
                     semanticLabel: 'Botão. Buscar melhores rotas acessíveis.',
                     icon: planningState.isLoading
                         ? const SizedBox(
@@ -282,12 +348,14 @@ class RouteSearchCard extends StatelessWidget {
                             ),
                           )
                         : const Icon(Icons.search, color: Colors.white),
-                    onPressed: canSearch 
-                      ? () {
-                          context.read<RoutePlanningBloc>().add(CalculateRouteEvent());
-                          FocusScope.of(context).unfocus();
-                        }
-                      : null,
+                    onPressed: canSearch
+                        ? () {
+                            context.read<RoutePlanningBloc>().add(
+                              CalculateRouteEvent(),
+                            );
+                            FocusScope.of(context).unfocus();
+                          }
+                        : null,
                   );
                 },
               ),
@@ -328,7 +396,9 @@ class _FilterChip extends StatelessWidget {
         color: isSelected ? AppTheme.mintGreen : AppTheme.textMuted,
         fontWeight: FontWeight.bold,
       ),
-      onSelected: (_) => context.read<RoutePlanningBloc>().add(SelectFilterEvent(filter: filterValue)),
+      onSelected: (_) => context.read<RoutePlanningBloc>().add(
+        SelectFilterEvent(filter: filterValue),
+      ),
     );
   }
 }

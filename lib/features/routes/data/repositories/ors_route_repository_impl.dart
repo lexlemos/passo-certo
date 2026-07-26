@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../community/domain/entities/obstacle.dart';
 import '../../domain/entities/navigation_route.dart';
 import '../../domain/repositories/route_repository.dart';
+import '../../../../core/utils/geo_utils.dart';
 
 /// Perfis de rota suportados pelo OpenRouteService
 enum _OrsProfile {
@@ -22,7 +23,8 @@ enum _OrsProfile {
 class ORSRouteRepositoryImpl implements RouteRepository {
   final http.Client _client;
 
-  ORSRouteRepositoryImpl({http.Client? client}) : _client = client ?? http.Client();
+  ORSRouteRepositoryImpl({http.Client? client})
+    : _client = client ?? http.Client();
 
   @override
   Future<List<NavigationRoute>> getRoutes({
@@ -30,11 +32,13 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     required double originLng,
     required double destLat,
     required double destLng,
-    List<Obstacle>? obstaclesToAvoid,
+    List<Obstacle>? blockingObstacles,
   }) async {
     final apiKey = dotenv.env['ORS_API_KEY'] ?? '';
     if (apiKey.isEmpty || apiKey == 'YOUR_API_KEY_HERE') {
-      throw Exception('Chave de API do OpenRouteService não configurada no arquivo .env');
+      throw Exception(
+        'Chave de API do OpenRouteService não configurada no arquivo .env',
+      );
     }
 
     // Dispara as duas requisições em paralelo para menor latência
@@ -45,7 +49,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         originLng: originLng,
         destLat: destLat,
         destLng: destLng,
-        obstaclesToAvoid: obstaclesToAvoid,
+        blockingObstacles: blockingObstacles,
         apiKey: apiKey,
       ),
       _fetchRoute(
@@ -54,7 +58,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         originLng: originLng,
         destLat: destLat,
         destLng: destLng,
-        obstaclesToAvoid: obstaclesToAvoid,
+        blockingObstacles: blockingObstacles,
         apiKey: apiKey,
       ),
     ]);
@@ -80,7 +84,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     required double destLat,
     required double destLng,
     required String apiKey,
-    List<Obstacle>? obstaclesToAvoid,
+    List<Obstacle>? blockingObstacles,
   }) async {
     final url = Uri.parse(
       'https://api.openrouteservice.org/v2/directions/${profile.slug}/geojson',
@@ -94,30 +98,24 @@ class ORSRouteRepositoryImpl implements RouteRepository {
       ],
     };
 
-    // Adiciona polígonos de exclusão para obstáculos reportados pela comunidade
-    if (obstaclesToAvoid != null && obstaclesToAvoid.isNotEmpty) {
-      final List<List<List<List<double>>>> avoidPolygons = [];
+    // Adiciona polígonos de exclusão para obstáculos bloqueantes
+    if (blockingObstacles != null && blockingObstacles.isNotEmpty) {
+      final List<List<List<double>>> avoidPolygons = [];
 
-      for (final obstacle in obstaclesToAvoid) {
-        final double lat = obstacle.latitude;
-        final double lng = obstacle.longitude;
-        const double offset = 0.0001; // Bounding box de ~11x11 metros
-
-        avoidPolygons.add([
-          [
-            [lng - offset, lat - offset],
-            [lng + offset, lat - offset],
-            [lng + offset, lat + offset],
-            [lng - offset, lat + offset],
-            [lng - offset, lat - offset], // fechamento do anel GeoJSON
-          ]
-        ]);
+      for (final obstacle in blockingObstacles) {
+        avoidPolygons.add(
+          GeoUtils.createBoundingBoxPolygon(
+            obstacle.latitude,
+            obstacle.longitude,
+          ),
+        );
       }
 
       body['options'] = {
         'avoid_polygons': {
           'type': 'MultiPolygon',
-          'coordinates': avoidPolygons,
+          // O formato MultiPolygon exige array de Polygons (onde Polygon = array de rings)
+          'coordinates': avoidPolygons.map((ring) => [ring]).toList(),
         },
       };
     }
@@ -135,13 +133,12 @@ class ORSRouteRepositoryImpl implements RouteRepository {
           .timeout(const Duration(seconds: 12));
 
       if (response.statusCode != 200) {
-        throw Exception('Erro na requisição ORS: Código ${response.statusCode}');
+        throw Exception(
+          'Erro na requisição ORS: Código ${response.statusCode}',
+        );
       }
 
-      return _parseResponse(
-        json.decode(response.body),
-        profile: profile,
-      );
+      return _parseResponse(json.decode(response.body), profile: profile);
     } catch (e, stackTrace) {
       developer.log(
         'Erro ao buscar rota ORS para o perfil ${profile.slug}',
@@ -182,10 +179,12 @@ class ORSRouteRepositoryImpl implements RouteRepository {
       if (geometry?['coordinates'] is List) {
         for (final point in geometry!['coordinates'] as List) {
           if (point is List && point.length >= 2) {
-            waypoints.add(RouteCoordinate(
-              (point[1] as num).toDouble(), // latitude
-              (point[0] as num).toDouble(), // longitude
-            ));
+            waypoints.add(
+              RouteCoordinate(
+                (point[1] as num).toDouble(), // latitude
+                (point[0] as num).toDouble(), // longitude
+              ),
+            );
           }
         }
       } else if (geometry?['coordinates'] is String) {
@@ -207,11 +206,13 @@ class ORSRouteRepositoryImpl implements RouteRepository {
               final startIndex = wayPoints[0] as int;
               if (startIndex < waypoints.length) {
                 final coord = waypoints[startIndex];
-                steps.add(RouteStep(
-                  instruction: instruction,
-                  distance: stepDistance,
-                  coordinate: LatLng(coord.latitude, coord.longitude),
-                ));
+                steps.add(
+                  RouteStep(
+                    instruction: instruction,
+                    distance: stepDistance,
+                    coordinate: LatLng(coord.latitude, coord.longitude),
+                  ),
+                );
               }
             }
           }
@@ -241,30 +242,27 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     // Metadados específicos de cada perfil
     return switch (profile) {
       _OrsProfile.wheelchair => NavigationRoute(
-          title: 'Rota para Cadeirante',
-          estimatedTime: durationMin,
-          distance: distanceKm,
-          accessibilityScore: 0.95,
-          characteristics: const [
-            'ACESSÍVEL PARA CADEIRA DE RODAS',
-            'EVITA ESCADAS',
-            'PREFERE RAMPAS',
-          ],
-          waypoints: waypoints,
-          steps: steps,
-        ),
+        title: 'Rota para Cadeirante',
+        estimatedTime: durationMin,
+        distance: distanceKm,
+        accessibilityScore: 0.95,
+        characteristics: const [
+          'ACESSÍVEL PARA CADEIRA DE RODAS',
+          'EVITA ESCADAS',
+          'PREFERE RAMPAS',
+        ],
+        waypoints: waypoints,
+        steps: steps,
+      ),
       _OrsProfile.footWalking => NavigationRoute(
-          title: 'Rota a Pé',
-          estimatedTime: durationMin,
-          distance: distanceKm,
-          accessibilityScore: 0.60,
-          characteristics: const [
-            'PEDESTRE SEM RESTRIÇÃO',
-            'CAMINHO MAIS CURTO',
-          ],
-          waypoints: waypoints,
-          steps: steps,
-        ),
+        title: 'Rota a Pé',
+        estimatedTime: durationMin,
+        distance: distanceKm,
+        accessibilityScore: 0.60,
+        characteristics: const ['PEDESTRE SEM RESTRIÇÃO', 'CAMINHO MAIS CURTO'],
+        waypoints: waypoints,
+        steps: steps,
+      ),
     };
   }
 

@@ -52,23 +52,31 @@ class AccessibilitySettingsSection extends StatelessWidget {
                           subtitle: 'Instruções de rota faladas passo a passo.',
                           value: state.voiceNavigation,
                           onChanged: (val) {
-                            context
-                                .read<ProfileNavigationBloc>()
-                                .add(ToggleVoiceNavigationEvent(value: val));
+                            context.read<ProfileNavigationBloc>().add(
+                              ToggleVoiceNavigationEvent(value: val),
+                            );
                           },
                         ),
-                        Divider(height: 32, color: Colors.grey[200], thickness: 1),
+                        Divider(
+                          height: 32,
+                          color: Colors.grey[200],
+                          thickness: 1,
+                        ),
                         ProfileSwitchRow(
                           title: 'Alto Contraste',
                           subtitle: 'Aumenta o contraste visual da interface.',
                           value: state.highContrast,
                           onChanged: (val) {
-                            context
-                                .read<ProfileNavigationBloc>()
-                                .add(ToggleHighContrastEvent(value: val));
+                            context.read<ProfileNavigationBloc>().add(
+                              ToggleHighContrastEvent(value: val),
+                            );
                           },
                         ),
-                        Divider(height: 32, color: Colors.grey[200], thickness: 1),
+                        Divider(
+                          height: 32,
+                          color: Colors.grey[200],
+                          thickness: 1,
+                        ),
                         Text(
                           'Tamanho do Texto',
                           style: theme.textTheme.bodyLarge?.copyWith(
@@ -85,21 +93,36 @@ class AccessibilitySettingsSection extends StatelessWidget {
                           ),
                           child: InputDecorator(
                             decoration: const InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               border: InputBorder.none,
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: state.textSize,
                                 isExpanded: true,
-                                items: ['Padrão', 'Pequeno', 'Médio', 'Grande', 'Extra Grande']
-                                    .map((size) => DropdownMenuItem(value: size, child: Text(size)))
-                                    .toList(),
+                                items:
+                                    [
+                                          'Padrão',
+                                          'Pequeno',
+                                          'Médio',
+                                          'Grande',
+                                          'Extra Grande',
+                                        ]
+                                        .map(
+                                          (size) => DropdownMenuItem(
+                                            value: size,
+                                            child: Text(size),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (val) {
                                   if (val != null) {
-                                    context
-                                        .read<ProfileNavigationBloc>()
-                                        .add(ChangeTextSizeEvent(value: val));
+                                    context.read<ProfileNavigationBloc>().add(
+                                      ChangeTextSizeEvent(value: val),
+                                    );
                                   }
                                 },
                               ),

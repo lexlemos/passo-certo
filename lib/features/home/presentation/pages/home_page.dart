@@ -19,15 +19,9 @@ class HomePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Seção de Boas-vindas (Topo)
-          Text(
-            'Olá, Maria!',
-            style: theme.textTheme.headlineLarge,
-          ),
+          Text('Olá, Maria!', style: theme.textTheme.headlineLarge),
           const SizedBox(height: 4),
-          Text(
-            'Onde vamos hoje?',
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text('Onde vamos hoje?', style: theme.textTheme.bodyMedium),
           const SizedBox(height: 24),
 
           // 2. Card Principal de Rota
@@ -35,15 +29,13 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             isButton: true,
             onTapHint: 'Iniciar navegação segura passo a passo',
-            semanticLabel: 'Botão Iniciar Rota. Toque para iniciar uma navegação segura passo a passo',
+            semanticLabel:
+                'Botão Iniciar Rota. Toque para iniciar uma navegação segura passo a passo',
             onTap: () {
               // Ação de navegação (mocked)
             },
             gradient: const LinearGradient(
-              colors: [
-                AppTheme.mintGreen,
-                AppColors.darkTeal,
-              ],
+              colors: [AppTheme.mintGreen, AppColors.darkTeal],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -97,7 +89,8 @@ class HomePage extends StatelessWidget {
                   margin: EdgeInsets.zero,
                   padding: const EdgeInsets.all(16),
                   isButton: true,
-                  onTapHint: 'Iniciar navegação dentro de prédios e locais fechados',
+                  onTapHint:
+                      'Iniciar navegação dentro de prédios e locais fechados',
                   semanticLabel: 'Botão Navegação Interna',
                   onTap: () {
                     // Ação de navegação interna (mocked)
@@ -135,11 +128,15 @@ class HomePage extends StatelessWidget {
                   margin: EdgeInsets.zero,
                   padding: const EdgeInsets.all(16),
                   isButton: true,
-                  onTapHint: 'Reportar problemas ou barreiras na via de tráfego',
+                  onTapHint:
+                      'Reportar problemas ou barreiras na via de tráfego',
                   semanticLabel: 'Botão Reportar Obstáculo',
                   onTap: () {
                     // Abre o bottom sheet de reporte com uma localização simulada padrão (próximo à UFS)
-                    ReportObstacleBottomSheet.show(context, const LatLng(-10.9472, -37.0731));
+                    ReportObstacleBottomSheet.show(
+                      context,
+                      const LatLng(-10.9472, -37.0731),
+                    );
                   },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +173,8 @@ class HomePage extends StatelessWidget {
           BaseCard(
             backgroundColor: AppTheme.emergencyRed,
             isButton: true,
-            onTapHint: 'Efetuar ligação telefônica de emergência para SAMU ou DIASE imediatamente',
+            onTapHint:
+                'Efetuar ligação telefônica de emergência para SAMU ou DIASE imediatamente',
             semanticLabel: 'Botão de Emergência. Ligar para SAMU ou DIASE',
             onTap: () => EmergencyDialogSheet.show(context),
             padding: const EdgeInsets.all(20),
@@ -218,11 +216,7 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
-                  Icons.phone,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                const Icon(Icons.phone, color: Colors.white, size: 24),
               ],
             ),
           ),

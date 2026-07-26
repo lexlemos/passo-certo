@@ -18,8 +18,8 @@ class BaseButton extends StatelessWidget {
     this.hint,
     this.onPressed,
     this.isEmergency = false,
-    this.height = 56,       
-    this.borderRadius = 16,  
+    this.height = 56,
+    this.borderRadius = 16,
     this.icon,
     this.gradient,
   });
@@ -27,21 +27,21 @@ class BaseButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final backgroundColor = isEmergency 
-        ? theme.colorScheme.error 
+    final backgroundColor = isEmergency
+        ? theme.colorScheme.error
         : theme.colorScheme.secondary;
 
     final buttonStyle = ElevatedButton.styleFrom(
       backgroundColor: gradient != null ? Colors.transparent : backgroundColor,
       foregroundColor: Colors.white,
       shadowColor: Colors.transparent,
-      elevation: 0, 
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(borderRadius), 
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
 
-    Widget buttonChild = icon != null 
+    Widget buttonChild = icon != null
         ? Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -51,7 +51,7 @@ class BaseButton extends StatelessWidget {
                 label,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: Colors.white,
-                  fontSize: 18, 
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -61,7 +61,7 @@ class BaseButton extends StatelessWidget {
             label,
             style: theme.textTheme.titleLarge?.copyWith(
               color: Colors.white,
-              fontSize: 18, 
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           );
@@ -76,7 +76,9 @@ class BaseButton extends StatelessWidget {
       button = DecoratedBox(
         decoration: BoxDecoration(
           gradient: onPressed != null ? gradient : null,
-          color: onPressed == null ? theme.disabledColor.withValues(alpha: 0.12) : null,
+          color: onPressed == null
+              ? theme.disabledColor.withValues(alpha: 0.12)
+              : null,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
         child: button,
@@ -89,11 +91,7 @@ class BaseButton extends StatelessWidget {
       label: semanticLabel,
       hint: hint,
       excludeSemantics: true,
-      child: SizedBox(
-        width: double.infinity,
-        height: height,
-        child: button,
-      ),
+      child: SizedBox(width: double.infinity, height: height, child: button),
     );
   }
 }

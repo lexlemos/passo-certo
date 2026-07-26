@@ -40,7 +40,8 @@ class RouteStep {
           coordinate == other.coordinate;
 
   @override
-  int get hashCode => instruction.hashCode ^ distance.hashCode ^ coordinate.hashCode;
+  int get hashCode =>
+      instruction.hashCode ^ distance.hashCode ^ coordinate.hashCode;
 }
 
 class NavigationRoute {
@@ -61,7 +62,9 @@ class NavigationRoute {
     required this.characteristics,
     required this.waypoints,
     this.steps = const [],
-  }) : latLngWaypoints = waypoints.map((c) => LatLng(c.latitude, c.longitude)).toList();
+  }) : latLngWaypoints = waypoints
+           .map((c) => LatLng(c.latitude, c.longitude))
+           .toList();
 
   bool get isHighlyAccessible => accessibilityScore >= 0.8;
 
