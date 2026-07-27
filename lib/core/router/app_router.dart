@@ -6,6 +6,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/routes/presentation/pages/route_planning_page.dart';
 import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
 import '../../features/routes/presentation/bloc/active_navigation_bloc.dart';
+import '../../features/routes/presentation/bloc/add_place_bloc.dart';
 import '../../features/community/presentation/pages/community_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../widgets/main_navigation_shell.dart';
@@ -44,6 +45,9 @@ final GoRouter appRouter = GoRouter(
                   ),
                   BlocProvider<ActiveNavigationBloc>(
                     create: (context) => di.sl<ActiveNavigationBloc>(),
+                  ),
+                  BlocProvider<AddPlaceBloc>(
+                    create: (context) => di.sl<AddPlaceBloc>(),
                   ),
                 ],
                 child: const RoutePlanningPage(),

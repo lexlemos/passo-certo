@@ -4,6 +4,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/either.dart';
 import '../../domain/entities/place.dart';
 import '../../domain/repositories/place_repository.dart';
+import 'dart:developer' as developer;
 import '../models/place_model.dart';
 
 /// Implementação real do [PlaceRepository] consumindo o Supabase (PostgreSQL).
@@ -78,7 +79,7 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
 
       _cachedPlaces = (response as List<dynamic>)
           .map((row) => PlaceModel.fromJson(row as Map<String, dynamic>))
-          .toList(growable: false);
+          .toList();
 
       return _cachedPlaces!;
     } on PostgrestException catch (e) {
@@ -131,4 +132,56 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
   /// Invalida o cache, forçando nova busca no banco na próxima chamada.
   /// Útil após operações de escrita (ex: admin adicionou um novo local).
   void invalidateCache() => _cachedPlaces = null;
+
+  @override
+  Future<Either<Failure, Place>> addPlace(Place place) async {
+    print('================================================');
+    print('[DEBUG_INSERCAO] Iniciando inserção de Local');
+    print('[DEBUG_INSERCAO] Nome: ${place.name}');
+    try {
+      final model = PlaceModel(
+        name: place.name,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        searchTerms: place.searchTerms,
+        category: place.category,
+        floor: place.floor,
+        isAccessible: place.isAccessible,
+      );
+
+      print('[DEBUG_INSERCAO] JSON a ser enviado: ${model.toJson()}');
+      final response = await supabaseClient
+          .from('places')
+          .insert(model.toJson())
+          .select()
+          .single();
+
+      print('[DEBUG_INSERCAO] Inserção concluída! Resposta: $response');
+      final addedPlace = PlaceModel.fromJson(response as Map<String, dynamic>);
+
+      // Atualização otimista no cache
+      if (_cachedPlaces != null) {
+        _cachedPlaces!.add(addedPlace);
+      }
+
+      return Right(addedPlace);
+    } on PostgrestException catch (e) {
+      print('[DEBUG_INSERCAO] PostgrestException: ${e.message}');
+      print('[DEBUG_INSERCAO] Detalhes: ${e.details}, Hint: ${e.hint}');
+      developer.log(
+        'PostgrestException ao adicionar local: ',
+        error: e,
+        name: 'SupabasePlaceRepositoryImpl',
+      );
+      return Left(ServerFailure('Falha ao adicionar local: ${e.message}'));
+    } catch (e) {
+      print('[DEBUG_INSERCAO] Exception Genérica: $e');
+      developer.log(
+        'Erro inesperado ao adicionar local: ',
+        error: e,
+        name: 'SupabasePlaceRepositoryImpl',
+      );
+      return Left(ServerFailure('Erro inesperado ao adicionar local: $e'));
+    }
+  }
 }

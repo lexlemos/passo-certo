@@ -72,7 +72,7 @@ class ObstacleModel extends Obstacle {
   /// | `longitude`       | longitude        | double            |
   /// | `type`            | type             | ObstacleType enum |
   /// | `description`     | description      | String            |
-  /// | `reported_at`     | reportedAt       | DateTime (ISO8601)|
+  /// | `created_at`      | reportedAt       | DateTime (ISO8601)|
   /// | `upvotes`         | upvotes          | int               |
   /// | `reporter_id`     | reporterId       | String (UUID)     |
   /// | `severity`        | severity         | ObstacleSeverity  |
@@ -84,7 +84,7 @@ class ObstacleModel extends Obstacle {
       longitude: (json['longitude'] as num).toDouble(),
       type: _parseType(json['type'] as String?),
       description: json['description'] as String? ?? '',
-      reportedAt: DateTime.parse(json['reported_at'] as String),
+      reportedAt: DateTime.parse(json['created_at'] as String),
       upvotes: json['upvotes'] as int? ?? 0,
       reporterId: json['reporter_id'] as String? ?? 'anonymous',
       severity: _parseSeverity(json['severity'] as String?),
@@ -107,9 +107,7 @@ class ObstacleModel extends Obstacle {
       'longitude': longitude,
       'type': _typeToString(type),
       'description': description,
-      'reported_at': reportedAt.toUtc().toIso8601String(),
-      'upvotes': upvotes,
-      'reporter_id': reporterId,
+      'created_at': reportedAt.toUtc().toIso8601String(),
       'severity': _severityToString(severity),
       'status': _statusToString(status),
     };
@@ -120,33 +118,33 @@ class ObstacleModel extends Obstacle {
   static String _typeToString(ObstacleType type) {
     switch (type) {
       case ObstacleType.pothole:
-        return 'pothole';
+        return 'POTHOLE';
       case ObstacleType.noTactilePaving:
-        return 'no_tactile_paving';
+        return 'NO_TACTILE_PAVING';
       case ObstacleType.stairs:
-        return 'stairs';
+        return 'STAIRS';
       case ObstacleType.blockedSidewalk:
-        return 'blocked_sidewalk';
+        return 'BLOCKED_SIDEWALK';
       case ObstacleType.other:
-        return 'other';
+        return 'OTHER';
     }
   }
 
   static String _severityToString(ObstacleSeverity severity) {
     switch (severity) {
       case ObstacleSeverity.blocking:
-        return 'blocking';
+        return 'BLOCKING';
       case ObstacleSeverity.warning:
-        return 'warning';
+        return 'WARNING';
     }
   }
 
   static String _statusToString(ObstacleStatus status) {
     switch (status) {
       case ObstacleStatus.resolved:
-        return 'resolved';
+        return 'RESOLVED';
       case ObstacleStatus.active:
-        return 'active';
+        return 'ACTIVE';
     }
   }
 }

@@ -41,30 +41,46 @@ class GeolocatorLocationServiceImpl implements LocationService {
         throw Exception('Permissão de localização negada pelo usuário.');
       }
     }
-    
+
     if (permission == LocationPermission.deniedForever) {
-      throw Exception('Permissão negada permanentemente. Vá nas configurações do Android.');
+      throw Exception(
+        'Permissão negada permanentemente. Vá nas configurações do Android.',
+      );
     }
 
     try {
       // 3. Tenta buscar do Cache do Android primeiro (Instantâneo - Ótimo para ambientes fechados)
       final lastKnown = await Geolocator.getLastKnownPosition();
       if (lastKnown != null) {
-        developer.log('Usando localização do cache (rápido).', name: 'LocationService');
+        developer.log(
+          'Usando localização do cache (rápido).',
+          name: 'LocationService',
+        );
         return lastKnown;
       }
 
       // 4. Se não tiver cache, força a busca nos satélites, mas com TIMEOUT DE SEGURANÇA!
-      developer.log('Buscando localização via satélite...', name: 'LocationService');
+      developer.log(
+        'Buscando localização via satélite...',
+        name: 'LocationService',
+      );
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8), // Proteção contra o loop/espera infinita
+          timeLimit: Duration(
+            seconds: 8,
+          ), // Proteção contra o loop/espera infinita
         ),
       );
     } catch (e) {
-      developer.log('Falha ao buscar GPS: $e', error: e, name: 'LocationService');
-      throw Exception('Não foi possível obter o sinal de GPS. Tente chegar perto de uma janela.');
+      developer.log(
+        'Falha ao buscar GPS: $e',
+        error: e,
+        name: 'LocationService',
+      );
+      throw Exception(
+        'Não foi possível obter o sinal de GPS. Tente chegar perto de uma janela.',
+      );
     }
   }
 

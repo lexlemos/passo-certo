@@ -12,6 +12,10 @@ import '../../../../core/config/app_constants.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../bloc/route_planning_bloc.dart';
 import '../bloc/active_navigation_bloc.dart';
+import '../bloc/add_place_bloc.dart';
+import '../../domain/entities/place.dart';
+import '../../../community/presentation/widgets/report_obstacle_bottom_sheet.dart';
+import 'add_place_bottom_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // RouteMapSection — widget público usado pela página
@@ -69,6 +73,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
     final routeBloc = context.read<RoutePlanningBloc>();
     final obstacleBloc = context.read<ObstacleBloc>();
     final activeNavBloc = context.read<ActiveNavigationBloc>();
+    final addPlaceBloc = context.read<AddPlaceBloc>();
 
     // Permite rotação ao entrar em tela cheia
     SystemChrome.setPreferredOrientations([
@@ -98,6 +103,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 BlocProvider.value(value: routeBloc),
                 BlocProvider.value(value: obstacleBloc),
                 BlocProvider.value(value: activeNavBloc),
+                BlocProvider.value(value: addPlaceBloc),
               ],
               child: _FullScreenMapDialog(
                 permissionStatus: _permissionStatus,
@@ -122,6 +128,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
     final obstacles = context.select<ObstacleBloc, List<Obstacle>>(
       (bloc) => bloc.state.obstacles,
     );
+    final addedPlaces = context.select<AddPlaceBloc, List<Place>>(
+      (b) => b.state.newlyAddedPlaces,
+    );
 
     return MultiBlocListener(
       listeners: [
@@ -137,13 +146,15 @@ class _RouteMapSectionState extends State<RouteMapSection> {
             if (activeState.isActive &&
                 activeState.lastPosition != null &&
                 _autoCenter) {
-              _mapController.move(
-                LatLng(
-                  activeState.lastPosition!.latitude,
-                  activeState.lastPosition!.longitude,
-                ),
-                _mapController.camera.zoom,
-              );
+              try {
+                _mapController.move(
+                  LatLng(
+                    activeState.lastPosition!.latitude,
+                    activeState.lastPosition!.longitude,
+                  ),
+                  _mapController.camera.zoom,
+                );
+              } catch (_) {}
             }
           },
         ),
@@ -156,10 +167,12 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           listener: (context, planningState) {
             if (!_hasCenteredOnUser) {
               _hasCenteredOnUser = true;
-              _mapController.move(
-                LatLng(planningState.originLat!, planningState.originLng!),
-                _mapController.camera.zoom,
-              );
+              try {
+                _mapController.move(
+                  LatLng(planningState.originLat!, planningState.originLng!),
+                  _mapController.camera.zoom,
+                );
+              } catch (_) {}
             }
           },
         ),
@@ -192,7 +205,12 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: _buildMapContent(state, obstacles, _mapController),
+                    child: _buildMapContent(
+                      state,
+                      obstacles,
+                      addedPlaces,
+                      _mapController,
+                    ),
                   ),
                 ),
               ),
@@ -240,6 +258,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
   Widget _buildMapContent(
     RoutePlanningState state,
     List<Obstacle> obstacles,
+    List<Place> addedPlaces,
     MapController mapController,
   ) {
     switch (_permissionStatus) {
@@ -311,6 +330,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         }).toList();
 
         final obstacleMarkers = _buildObstacleMarkers(obstacles);
+        final placeMarkers = _buildPlaceMarkers(addedPlaces);
 
         final List<Marker> dynamicMarkers = [];
         if (state.originLat != null && state.originLng != null) {
@@ -386,6 +406,8 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                     MarkerLayer(
                       markers: [
                         ...obstacleMarkers,
+                        ...placeMarkers,
+                        ...placeMarkers,
                         ...dynamicMarkers,
                         if (activeState.isActive &&
                             activeState.lastPosition != null)
@@ -420,13 +442,15 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                             _autoCenter = true;
                           });
                           if (activeState.lastPosition != null) {
-                            mapController.move(
-                              LatLng(
-                                activeState.lastPosition!.latitude,
-                                activeState.lastPosition!.longitude,
-                              ),
-                              mapController.camera.zoom,
-                            );
+                            try {
+                              mapController.move(
+                                LatLng(
+                                  activeState.lastPosition!.latitude,
+                                  activeState.lastPosition!.longitude,
+                                ),
+                                mapController.camera.zoom,
+                              );
+                            } catch (_) {}
                           }
                         },
                         backgroundColor: Colors.white,
@@ -449,10 +473,12 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                       child: FloatingActionButton.small(
                         heroTag: 'recenter_user_loc_btn',
                         onPressed: () {
-                          mapController.move(
-                            LatLng(state.originLat!, state.originLng!),
-                            mapController.camera.zoom,
-                          );
+                          try {
+                            mapController.move(
+                              LatLng(state.originLat!, state.originLng!),
+                              mapController.camera.zoom,
+                            );
+                          } catch (_) {}
                         },
                         backgroundColor: Colors.white,
                         child: const Icon(
@@ -477,6 +503,32 @@ class _RouteMapSectionState extends State<RouteMapSection> {
   }
 
   /// Converte a lista de entidades de obstáculos para Marcadores acessíveis do flutter_map
+  List<Marker> _buildPlaceMarkers(List<Place> addedPlaces) {
+    return addedPlaces
+        .map(
+          (p) => Marker(
+            point: LatLng(p.latitude, p.longitude),
+            width: 36,
+            height: 36,
+            child: Semantics(
+              label: 'Novo local: ',
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(
+                  Icons.business,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        )
+        .toList();
+  }
+
   List<Marker> _buildObstacleMarkers(List<Obstacle> obstacles) {
     return obstacles.map((obstacle) {
       final bool isBlocking = obstacle.severity == ObstacleSeverity.blocking;
@@ -534,6 +586,9 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
     final obstacles = context.select<ObstacleBloc, List<Obstacle>>(
       (bloc) => bloc.state.obstacles,
     );
+    final addedPlaces = context.select<AddPlaceBloc, List<Place>>(
+      (b) => b.state.newlyAddedPlaces,
+    );
 
     return BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
       listenWhen: (prev, curr) =>
@@ -582,6 +637,7 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
           }).toList();
 
           final obstacleMarkers = _buildObstacleMarkers(obstacles);
+          final placeMarkers = _buildPlaceMarkers(addedPlaces);
 
           final List<Marker> dynamicMarkers = [];
           if (state.originLat != null && state.originLng != null) {
@@ -672,6 +728,7 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                           MarkerLayer(
                             markers: [
                               ...obstacleMarkers,
+                              ...placeMarkers,
                               ...dynamicMarkers,
                               if (activeState.isActive &&
                                   activeState.lastPosition != null)
@@ -719,13 +776,15 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                                   _autoCenter = true;
                                 });
                                 if (activeState.lastPosition != null) {
-                                  _mapController.move(
-                                    LatLng(
-                                      activeState.lastPosition!.latitude,
-                                      activeState.lastPosition!.longitude,
-                                    ),
-                                    _mapController.camera.zoom,
-                                  );
+                                  try {
+                                    _mapController.move(
+                                      LatLng(
+                                        activeState.lastPosition!.latitude,
+                                        activeState.lastPosition!.longitude,
+                                      ),
+                                      _mapController.camera.zoom,
+                                    );
+                                  } catch (_) {}
                                 }
                               },
                               backgroundColor: Colors.white,
@@ -749,10 +808,12 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                             child: FloatingActionButton.small(
                               heroTag: 'recenter_user_loc_fs_btn',
                               onPressed: () {
-                                _mapController.move(
-                                  LatLng(state.originLat!, state.originLng!),
-                                  _mapController.camera.zoom,
-                                );
+                                try {
+                                  _mapController.move(
+                                    LatLng(state.originLat!, state.originLng!),
+                                    _mapController.camera.zoom,
+                                  );
+                                } catch (_) {}
                               },
                               backgroundColor: Colors.white,
                               child: const Icon(
@@ -764,6 +825,63 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
                           ),
                         ),
 
+                      // --------------------------------------------------------
+                      // FABs de Inserção (Utilitário)
+                      // --------------------------------------------------------
+                      Positioned(
+                        bottom: 160,
+                        right: 16,
+                        child: Column(
+                          children: [
+                            Semantics(
+                              button: true,
+                              label: 'Botão. Adicionar novo local neste ponto.',
+                              child: FloatingActionButton(
+                                heroTag: 'add_place_btn',
+                                backgroundColor: Colors.blue,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  final center = _mapController.camera.center;
+                                  AddPlaceBottomSheet.show(context, center);
+                                },
+                                child: const Icon(
+                                  Icons.business,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Semantics(
+                              button: true,
+                              label: 'Botão. Reportar obstáculo neste ponto.',
+                              child: FloatingActionButton(
+                                heroTag: 'add_obstacle_btn',
+                                backgroundColor: AppTheme.emergencyRed,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  final center = _mapController.camera.center;
+                                  ReportObstacleBottomSheet.show(
+                                    context,
+                                    center,
+                                  );
+                                },
+                                child: const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       // --------------------------------------------------------
                       // Botão fechar (canto superior esquerdo)
                       // --------------------------------------------------------
@@ -836,6 +954,32 @@ class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
         },
       ),
     );
+  }
+
+  List<Marker> _buildPlaceMarkers(List<Place> addedPlaces) {
+    return addedPlaces
+        .map(
+          (p) => Marker(
+            point: LatLng(p.latitude, p.longitude),
+            width: 36,
+            height: 36,
+            child: Semantics(
+              label: 'Novo local: ',
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(
+                  Icons.business,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        )
+        .toList();
   }
 
   List<Marker> _buildObstacleMarkers(List<Obstacle> obstacles) {

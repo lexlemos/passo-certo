@@ -4,53 +4,48 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_button.dart';
-import '../../domain/entities/obstacle.dart';
-import '../bloc/obstacle_bloc.dart';
+import '../bloc/add_place_bloc.dart';
 
-class ReportObstacleBottomSheet extends StatefulWidget {
+class AddPlaceBottomSheet extends StatefulWidget {
   final LatLng location;
 
-  const ReportObstacleBottomSheet({super.key, required this.location});
+  const AddPlaceBottomSheet({super.key, required this.location});
 
   static void show(BuildContext context, LatLng location) {
-    final bloc = context.read<ObstacleBloc>();
+    final bloc = context.read<AddPlaceBloc>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
         value: bloc,
-        child: ReportObstacleBottomSheet(location: location),
+        child: AddPlaceBottomSheet(location: location),
       ),
     );
   }
 
   @override
-  State<ReportObstacleBottomSheet> createState() =>
-      _ReportObstacleBottomSheetState();
+  State<AddPlaceBottomSheet> createState() => _AddPlaceBottomSheetState();
 }
 
-class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
-  ObstacleType _selectedType = ObstacleType.pothole;
-  ObstacleSeverity _selectedSeverity = ObstacleSeverity.warning;
-  final TextEditingController _descriptionController = TextEditingController();
+class _AddPlaceBottomSheetState extends State<AddPlaceBottomSheet> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _searchTermsController = TextEditingController();
+  String _selectedCategory = 'Prédio';
 
-  final Map<ObstacleType, String> _typesMap = {
-    ObstacleType.pothole: 'Buraco ou desnível',
-    ObstacleType.noTactilePaving: 'Falta de piso tátil',
-    ObstacleType.stairs: 'Escada sem rampa',
-    ObstacleType.blockedSidewalk: 'Calçada obstruída',
-    ObstacleType.other: 'Outro',
-  };
-
-  final Map<ObstacleSeverity, String> _severityMap = {
-    ObstacleSeverity.warning: 'Atenção (Requer cuidado)',
-    ObstacleSeverity.blocking: 'Bloqueio (Impede passagem)',
-  };
+  final List<String> _categories = [
+    'Prédio',
+    'Banheiro',
+    'Auditório',
+    'Biblioteca',
+    'Restaurante',
+    'Outro',
+  ];
 
   @override
   void dispose() {
-    _descriptionController.dispose();
+    _nameController.dispose();
+    _searchTermsController.dispose();
     super.dispose();
   }
 
@@ -59,10 +54,9 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
     final theme = Theme.of(context);
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return BlocListener<ObstacleBloc, ObstacleState>(
+    return BlocListener<AddPlaceBloc, AddPlaceState>(
       listenWhen: (prev, curr) =>
-          (prev.isReportedSuccess != curr.isReportedSuccess &&
-              curr.isReportedSuccess) ||
+          (!prev.isSuccess && curr.isSuccess) ||
           (prev.errorMessage != curr.errorMessage && curr.errorMessage != null),
       listener: (context, state) {
         if (state.errorMessage != null) {
@@ -72,10 +66,10 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
               backgroundColor: Colors.red,
             ),
           );
-        } else if (state.isReportedSuccess) {
+        } else if (state.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Obstáculo reportado com sucesso!'),
+              content: Text('Local adicionado com sucesso!'),
               backgroundColor: Colors.green,
               behavior: SnackBarBehavior.floating,
             ),
@@ -102,7 +96,7 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
               Semantics(
                 header: true,
                 child: Text(
-                  'REPORTAR OBSTÁCULO',
+                  'ADICIONAR NOVO LOCAL',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: Colors.black,
@@ -113,76 +107,11 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
               const SizedBox(height: 24),
 
               Semantics(
-                label: 'Tipo de Obstáculo',
-                child: DropdownButtonFormField<ObstacleType>(
-                  value: _selectedType,
-                  decoration: const InputDecoration(
-                    labelText: 'TIPO DE OBSTÁCULO',
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  items: _typesMap.entries.map((e) {
-                    return DropdownMenuItem(
-                      value: e.key,
-                      child: Text(
-                        e.value,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedType = val);
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Semantics(
-                label: 'Severidade',
-                child: DropdownButtonFormField<ObstacleSeverity>(
-                  value: _selectedSeverity,
-                  decoration: const InputDecoration(
-                    labelText: 'SEVERIDADE',
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  items: _severityMap.entries.map((e) {
-                    return DropdownMenuItem(
-                      value: e.key,
-                      child: Text(
-                        e.value,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedSeverity = val);
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Semantics(
-                label: 'Descrição',
+                label: 'Nome do Local',
                 child: TextField(
-                  controller: _descriptionController,
-                  maxLines: 2,
+                  controller: _nameController,
                   decoration: const InputDecoration(
-                    labelText: 'DESCRIÇÃO (OPCIONAL)',
+                    labelText: 'NOME DO LOCAL',
                     labelStyle: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
@@ -192,28 +121,81 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
                     ),
                     filled: true,
                     fillColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Semantics(
+                label: 'Categoria',
+                child: DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  decoration: const InputDecoration(
+                    labelText: 'CATEGORIA',
+                    labelStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  items: _categories.map((c) {
+                    return DropdownMenuItem(
+                      value: c,
+                      child: Text(
+                        c,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedCategory = val);
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Semantics(
+                label: 'Termos de Busca',
+                child: TextField(
+                  controller: _searchTermsController,
+                  decoration: const InputDecoration(
+                    labelText: 'TERMOS DE BUSCA (separados por vírgula)',
+                    labelStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    hintText: 'Ex: reitoria, dces, secretaria',
                   ),
                 ),
               ),
               const SizedBox(height: 24),
 
-              BlocBuilder<ObstacleBloc, ObstacleState>(
+              BlocBuilder<AddPlaceBloc, AddPlaceState>(
                 builder: (context, state) {
                   return BaseButton(
-                    label: 'ENVIAR REPORTE',
-                    semanticLabel: 'Botão. Enviar reporte de obstáculo.',
+                    label: 'SALVAR LOCAL',
+                    semanticLabel: 'Botão. Enviar formulário de novo local.',
                     borderRadius: 4,
-                    isEmergency: true, // Fica vermelho
                     onPressed: state.isLoading
                         ? null
                         : () {
+                            if (_nameController.text.trim().isEmpty) return;
                             FocusScope.of(context).unfocus();
-                            context.read<ObstacleBloc>().add(
-                              ReportNewObstacleEvent(
-                                type: _selectedType,
-                                severity: _selectedSeverity,
+                            context.read<AddPlaceBloc>().add(
+                              SubmitPlaceEvent(
+                                name: _nameController.text.trim(),
+                                category: _selectedCategory,
+                                searchTerms: _searchTermsController.text.trim(),
                                 location: widget.location,
-                                description: _descriptionController.text.trim(),
                               ),
                             );
                           },

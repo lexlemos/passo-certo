@@ -30,8 +30,8 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
       final response = await supabaseClient
           .from('obstacles')
           .select()
-          .eq('status', 'active')
-          .order('reported_at', ascending: false);
+          .eq('status', 'ACTIVE')
+          .order('created_at', ascending: false);
 
       final obstacles = (response as List<dynamic>)
           .map((row) => ObstacleModel.fromJson(row as Map<String, dynamic>))
@@ -54,8 +54,11 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
   /// do PostgreSQL, independente do timezone do dispositivo do usuário.
   @override
   Future<Either<Failure, void>> reportObstacle(Obstacle obstacle) async {
+    print('================================================');
+    print('[DEBUG_INSERCAO] Iniciando inserção de Obstáculo');
+    print('[DEBUG_INSERCAO] ID: ${obstacle.id}');
+    print('[DEBUG_INSERCAO] Tipo: ${obstacle.type}');
     try {
-      // Converte a entidade de domínio para o modelo de dados com toJson.
       final model = ObstacleModel(
         id: obstacle.id,
         latitude: obstacle.latitude,
@@ -69,12 +72,17 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
         status: obstacle.status,
       );
 
-      await supabaseClient.from('obstacles').insert(model.toJson());
+      print('[DEBUG_INSERCAO] JSON a ser enviado: ${model.toJson()}');
+      final response = await supabaseClient.from('obstacles').insert(model.toJson()).select();
+      print('[DEBUG_INSERCAO] Inserção concluída com sucesso! Resposta: $response');
 
       return const Right(null);
     } on PostgrestException catch (e) {
+      print('[DEBUG_INSERCAO] PostgrestException: ${e.message}');
+      print('[DEBUG_INSERCAO] Detalhes: ${e.details}, Hint: ${e.hint}');
       return Left(ServerFailure('Falha ao reportar obstáculo: ${e.message}'));
     } catch (e) {
+      print('[DEBUG_INSERCAO] Exception Genérica: $e');
       return Left(ServerFailure('Erro inesperado ao reportar obstáculo: $e'));
     }
   }

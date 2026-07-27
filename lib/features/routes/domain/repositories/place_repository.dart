@@ -16,4 +16,7 @@ abstract class PlaceRepository {
 
   /// Busca locais por nome ou termo de pesquisa.
   Future<Either<Failure, List<Place>>> searchPlaces(String query);
+
+  /// Adiciona um novo local da UFS e atualiza o cache.
+  Future<Either<Failure, Place>> addPlace(Place place);
 }

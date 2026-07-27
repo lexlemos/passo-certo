@@ -8,10 +8,12 @@ import '../../features/routes/domain/repositories/route_repository.dart';
 import '../../features/routes/domain/usecases/get_recommended_route.dart';
 import '../../features/routes/domain/usecases/get_routes.dart';
 import '../../features/routes/domain/usecases/calculate_accessible_route.dart';
+import '../../features/routes/domain/usecases/add_place.dart';
 import '../../features/profile/domain/usecases/validate_emergency_contact.dart';
 import '../../features/profile/presentation/bloc/profile_navigation_bloc.dart';
 import '../../features/profile/presentation/bloc/profile_emergency_bloc.dart';
 import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
+import '../../features/routes/presentation/bloc/add_place_bloc.dart';
 import '../../features/routes/data/repositories/nominatim_geocoding_repository_impl.dart';
 import '../../features/routes/domain/repositories/geocoding_repository.dart';
 import '../../features/routes/domain/usecases/search_address.dart';
@@ -52,6 +54,7 @@ Future<void> init() async {
   sl.registerFactory(
     () => ObstacleBloc(getObstaclesUseCase: sl(), reportObstacleUseCase: sl()),
   );
+  sl.registerFactory(() => AddPlaceBloc(addPlaceUseCase: sl()));
   sl.registerFactory(() => CommunityBloc());
   sl.registerFactory(
     () => ActiveNavigationBloc(
@@ -75,6 +78,7 @@ Future<void> init() async {
         SearchAddressUseCase(placeRepository: sl(), geocodingRepository: sl()),
   );
   sl.registerLazySingleton(() => GetCurrentLocationPlaceUseCase(sl(), sl()));
+  sl.registerLazySingleton(() => AddPlaceUseCase(sl()));
 
   // --- Data Layer (External) ---
   // O SupabaseClient é um singleton já inicializado no main(); apenas o referenciamos aqui.

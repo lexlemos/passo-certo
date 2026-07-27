@@ -47,4 +47,16 @@ class PlaceModel extends Place {
       isAccessible: json['is_accessible'] as bool? ?? true,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'latitude': latitude,
+      'longitude': longitude,
+      'search_terms': searchTerms,
+      'category': category,
+      'floor': floor,
+      'is_accessible': isAccessible,
+    };
+  }
 }

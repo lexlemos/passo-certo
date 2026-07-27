@@ -10,6 +10,8 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/community/presentation/bloc/obstacle_bloc.dart';
 
+import 'package:passo_certo/features/routes/presentation/bloc/add_place_bloc.dart';
+
 void main() async {
   // Garante a inicialização correta dos bindings do Flutter
   WidgetsFlutterBinding.ensureInitialized();

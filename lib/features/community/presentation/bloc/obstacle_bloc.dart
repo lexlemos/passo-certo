@@ -3,6 +3,8 @@ import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
+import 'dart:developer' as developer;
+
 import '../../domain/entities/obstacle.dart';
 import '../../domain/usecases/get_obstacles.dart';
 import '../../domain/usecases/report_obstacle.dart';
@@ -19,15 +21,17 @@ class ReportNewObstacleEvent extends ObstacleEvent {
   final ObstacleType type;
   final LatLng location;
   final String description;
+  final ObstacleSeverity severity;
 
   ReportNewObstacleEvent({
     required this.type,
     required this.location,
     required this.description,
+    required this.severity,
   });
 
   @override
-  List<Object?> get props => [type, location, description];
+  List<Object?> get props => [type, location, description, severity];
 }
 
 // --- STATE ---
@@ -111,6 +115,10 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
     ReportNewObstacleEvent event,
     Emitter<ObstacleState> emit,
   ) async {
+    developer.log(
+      'Tentando adicionar Obstáculo: ${event.type.name}',
+      name: 'DebugInsercao',
+    );
     emit(
       state.copyWith(
         isLoading: true,
@@ -128,29 +136,46 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
       reportedAt: DateTime.now().toUtc(),
       upvotes: 0,
       reporterId: 'anonymous',
-      severity: ObstacleSeverity.blocking,
+      severity: event.severity,
       status: ObstacleStatus.active,
     );
+
+    // Otimista: Injeta na lista imediatamente
+    final optimisticList = List<Obstacle>.from(state.obstacles)
+      ..insert(0, newObstacle);
+    emit(state.copyWith(obstacles: optimisticList));
 
     final result = await _reportObstacleUseCase(newObstacle);
 
     await result.fold(
-      (failure) async =>
-          emit(state.copyWith(isLoading: false, errorMessage: failure.message)),
+      (failure) async {
+        print('[DEBUG_INSERCAO] Falha capturada no BLoC: ${failure.message}');
+        // Reverte se falhou
+        final revertedList = state.obstacles
+            .where((o) => o.id != newObstacle.id)
+            .toList();
+        print('[DEBUG_INSERCAO] Revertendo lista (Removendo ID ${newObstacle.id})');
+        emit(
+          state.copyWith(
+            isLoading: false,
+            errorMessage: failure.message,
+            obstacles: revertedList,
+          ),
+        );
+      },
       (_) async {
-        // Recarrega todos os obstáculos após salvar
+        print('[DEBUG_INSERCAO] Sucesso retornado pelo UseCase!');
+        emit(state.copyWith(isLoading: false, isReportedSuccess: true));
+        // Refetch silencioso
         final reloadResult = await _getObstaclesUseCase();
         reloadResult.fold(
-          (failure) => emit(
-            state.copyWith(isLoading: false, errorMessage: failure.message),
-          ),
-          (obstacles) => emit(
-            state.copyWith(
-              isLoading: false,
-              obstacles: obstacles,
-              isReportedSuccess: true,
-            ),
-          ),
+          (failure) {
+             print('[DEBUG_INSERCAO] Refetch falhou silenciosamente: ${failure.message}');
+          },
+          (obstacles) {
+             print('[DEBUG_INSERCAO] Refetch com sucesso. ${obstacles.length} obstáculos encontrados.');
+             emit(state.copyWith(obstacles: obstacles));
+          },
         );
       },
     );
