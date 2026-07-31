@@ -31,9 +31,11 @@ class RouteSearchCard extends StatelessWidget {
           previous.selectedFilter != current.selectedFilter,
       builder: (context, state) {
         return BaseCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           semanticLabel:
               "Formulário de busca de rotas com preenchimento automático",
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Stack(
                 alignment: Alignment.centerRight,
@@ -88,9 +90,15 @@ class RouteSearchCard extends StatelessWidget {
                                 decoration: InputDecoration(
                                   labelText: 'Origem',
                                   hintText: 'Sua localização atual',
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                   prefixIcon: const Icon(
                                     Icons.my_location,
                                     color: AppTheme.spaceBlue,
+                                    size: 20,
                                   ),
                                   suffixIcon: ValueListenableBuilder<TextEditingValue>(
                                     valueListenable: controller,
@@ -106,7 +114,7 @@ class RouteSearchCard extends StatelessWidget {
                                               child: IconButton(
                                                 icon: const Icon(
                                                   Icons.clear,
-                                                  size: 20,
+                                                  size: 18,
                                                 ),
                                                 onPressed: () {
                                                   controller.clear();
@@ -124,6 +132,7 @@ class RouteSearchCard extends StatelessWidget {
                                               icon: const Icon(
                                                 Icons.my_location,
                                                 color: AppTheme.spaceBlue,
+                                                size: 18,
                                               ),
                                               onPressed: () {
                                                 context
@@ -149,7 +158,7 @@ class RouteSearchCard extends StatelessWidget {
                             },
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         // Destino Autocomplete
                         Semantics(
                           label:
@@ -196,9 +205,15 @@ class RouteSearchCard extends StatelessWidget {
                                 decoration: InputDecoration(
                                   labelText: 'Destino',
                                   hintText: 'Para onde quer ir?',
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                   prefixIcon: const Icon(
                                     Icons.location_on,
                                     color: AppTheme.mintGreen,
+                                    size: 20,
                                   ),
                                   suffixIcon:
                                       ValueListenableBuilder<TextEditingValue>(
@@ -213,7 +228,7 @@ class RouteSearchCard extends StatelessWidget {
                                             child: IconButton(
                                               icon: const Icon(
                                                 Icons.clear,
-                                                size: 20,
+                                                size: 18,
                                               ),
                                               onPressed: () {
                                                 controller.clear();
@@ -264,7 +279,7 @@ class RouteSearchCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -281,15 +296,9 @@ class RouteSearchCard extends StatelessWidget {
                     isSelected: state.selectedFilter == 'fastest',
                     filterValue: 'fastest',
                   ),
-                  _FilterChip(
-                    label: 'Mais Arborizada',
-                    icon: Icons.park,
-                    isSelected: state.selectedFilter == 'treed',
-                    filterValue: 'treed',
-                  ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
                 builder: (context, planningState) {
                   final activeNavState = context
@@ -316,7 +325,7 @@ class RouteSearchCard extends StatelessWidget {
                     final selectedRoute =
                         planningState.routes[planningState.selectedRouteIndex];
                     return BaseButton(
-                      label: 'Buscar Rota',
+                      label: 'Iniciar Navegação',
                       semanticLabel:
                           'Botão. Iniciar navegação guiada por voz para a rota selecionada.',
                       icon: const Icon(Icons.navigation, color: Colors.white),

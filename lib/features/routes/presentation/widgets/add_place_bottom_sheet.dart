@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_button.dart';
 import '../bloc/add_place_bloc.dart';
 
 class AddPlaceBottomSheet extends StatefulWidget {
-  final LatLng location;
+  final LatLng selectedLocation;
 
-  const AddPlaceBottomSheet({super.key, required this.location});
+  const AddPlaceBottomSheet({super.key, required this.selectedLocation});
 
-  static void show(BuildContext context, LatLng location) {
+  static void show(BuildContext context, LatLng selectedLocation) {
     final bloc = context.read<AddPlaceBloc>();
     showModalBottomSheet(
       context: context,
@@ -19,7 +18,7 @@ class AddPlaceBottomSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
         value: bloc,
-        child: AddPlaceBottomSheet(location: location),
+        child: AddPlaceBottomSheet(selectedLocation: selectedLocation),
       ),
     );
   }
@@ -129,7 +128,7 @@ class _AddPlaceBottomSheetState extends State<AddPlaceBottomSheet> {
               Semantics(
                 label: 'Categoria',
                 child: DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: const InputDecoration(
                     labelText: 'CATEGORIA',
                     labelStyle: TextStyle(
@@ -195,7 +194,7 @@ class _AddPlaceBottomSheetState extends State<AddPlaceBottomSheet> {
                                 name: _nameController.text.trim(),
                                 category: _selectedCategory,
                                 searchTerms: _searchTermsController.text.trim(),
-                                location: widget.location,
+                                location: widget.selectedLocation,
                               ),
                             );
                           },

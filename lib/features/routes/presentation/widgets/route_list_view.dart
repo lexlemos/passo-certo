@@ -17,8 +17,21 @@ class RouteListView extends StatelessWidget {
           !listEquals(previous.routes, current.routes) ||
           previous.recommendedRoute != current.recommendedRoute,
       builder: (context, state) {
-        return Column(
-          children: List.generate(state.routes.length, (index) {
+        if (state.routes.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.15,
+          ),
+          itemCount: state.routes.length,
+          itemBuilder: (context, index) {
             final route = state.routes[index];
 
             return RouteOptionCard(
@@ -33,7 +46,7 @@ class RouteListView extends StatelessWidget {
                 SelectRouteEvent(routeIndex: index),
               ),
             );
-          }),
+          },
         );
       },
     );
@@ -72,13 +85,14 @@ class RouteOptionCard extends StatelessWidget {
         : 'Médio ($accPercentage%)';
 
     return BaseCard(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
       semanticLabel:
           "Rota $title. Tempo estimado $time. Distância $distance. Nível de acessibilidade $accLevel. Toque duas vezes para selecionar.",
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
@@ -88,88 +102,95 @@ class RouteOptionCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isRecommended) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          margin: const EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.mintGreen,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Recomendada',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                      Text(
-                        title,
-                        style: theme.textTheme.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      time,
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                if (isRecommended) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    margin: const EdgeInsets.only(bottom: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.mintGreen,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'Recomendada',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.mintGreen,
                       ),
                     ),
-                    Text(distance, style: theme.textTheme.bodyMedium),
+                  ),
+                ],
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        time,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.mintGreen,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      distance,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: tags
-                  .map(
-                    (tag) => Chip(
-                      label: Text(
-                        tag,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      backgroundColor: AppTheme.softGreyBg,
-                      padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 12),
-            Text('Acessibilidade: $accLevel', style: theme.textTheme.bodySmall),
-            const SizedBox(height: 4),
-            LinearProgressIndicator(
-              value: accessibilityScore,
-              backgroundColor: AppTheme.softGreyBg,
-              color: isHighAccessibility ? AppTheme.mintGreen : Colors.orange,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Acessibilidade: $accPercentage%',
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: accessibilityScore,
+                    minHeight: 4,
+                    backgroundColor: AppTheme.softGreyBg,
+                    color: isHighAccessibility
+                        ? AppTheme.mintGreen
+                        : Colors.orange,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/base_button.dart';
 import '../../domain/entities/obstacle.dart';
 import '../bloc/obstacle_bloc.dart';
 
 class ReportObstacleBottomSheet extends StatefulWidget {
-  final LatLng location;
+  final LatLng selectedLocation;
 
-  const ReportObstacleBottomSheet({super.key, required this.location});
+  const ReportObstacleBottomSheet({super.key, required this.selectedLocation});
 
-  static void show(BuildContext context, LatLng location) {
+  static void show(BuildContext context, LatLng selectedLocation) {
     final bloc = context.read<ObstacleBloc>();
     showModalBottomSheet(
       context: context,
@@ -20,7 +19,7 @@ class ReportObstacleBottomSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
         value: bloc,
-        child: ReportObstacleBottomSheet(location: location),
+        child: ReportObstacleBottomSheet(selectedLocation: selectedLocation),
       ),
     );
   }
@@ -115,7 +114,7 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
               Semantics(
                 label: 'Tipo de Obstáculo',
                 child: DropdownButtonFormField<ObstacleType>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(
                     labelText: 'TIPO DE OBSTÁCULO',
                     labelStyle: TextStyle(
@@ -147,7 +146,7 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
               Semantics(
                 label: 'Severidade',
                 child: DropdownButtonFormField<ObstacleSeverity>(
-                  value: _selectedSeverity,
+                  initialValue: _selectedSeverity,
                   decoration: const InputDecoration(
                     labelText: 'SEVERIDADE',
                     labelStyle: TextStyle(
@@ -212,7 +211,7 @@ class _ReportObstacleBottomSheetState extends State<ReportObstacleBottomSheet> {
                               ReportNewObstacleEvent(
                                 type: _selectedType,
                                 severity: _selectedSeverity,
-                                location: widget.location,
+                                location: widget.selectedLocation,
                                 description: _descriptionController.text.trim(),
                               ),
                             );
