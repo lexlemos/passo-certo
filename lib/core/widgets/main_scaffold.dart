@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// O shell de layout principal do aplicativo Passo Certo.
 ///
@@ -23,7 +24,11 @@ class MainScaffold extends StatelessWidget {
           Icons.accessible_forward,
           semanticLabel: 'Ícone de Acessibilidade: Pessoa andando com bengala',
         ),
-        title: Text('Passo Certo', style: theme.textTheme.titleLarge),
+        title: SvgPicture.asset(
+          'assets/images/Logo_passoufs.svg',
+          height: 36,
+          semanticsLabel: 'Logo PassoUFS',
+        ),
         centerTitle: true,
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
