@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -32,7 +33,7 @@ class HomePage extends StatelessWidget {
             semanticLabel:
                 'Botão Iniciar Rota. Toque para iniciar uma navegação segura passo a passo',
             onTap: () {
-              // Ação de navegação (mocked)
+              context.go('/routes');
             },
             gradient: const LinearGradient(
               colors: [AppTheme.mintGreen, AppColors.darkTeal],
@@ -80,92 +81,44 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // 3. Seção de Ações Rápidas (Linha com 2 cards menores usando Expanded)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: BaseCard(
-                  margin: EdgeInsets.zero,
-                  padding: const EdgeInsets.all(16),
-                  isButton: true,
-                  onTapHint:
-                      'Iniciar navegação dentro de prédios e locais fechados',
-                  semanticLabel: 'Botão Navegação Interna',
-                  onTap: () {
-                    // Ação de navegação interna (mocked)
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.spaceBlue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.business,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Navegação Interna',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+          // 3. Card de Ação Rápida: Reportar Obstáculo
+          BaseCard(
+            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.all(16),
+            isButton: true,
+            onTapHint: 'Reportar problemas ou barreiras na via de tráfego',
+            semanticLabel: 'Botão Reportar Obstáculo',
+            onTap: () {
+              // Abre o bottom sheet de reporte com uma localização simulada padrão (próximo à UFS)
+              ReportObstacleBottomSheet.show(
+                context,
+                const LatLng(-10.9472, -37.0731),
+              );
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: AppColors.lightBlueBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.alertBlue,
+                    size: 22,
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: BaseCard(
-                  margin: EdgeInsets.zero,
-                  padding: const EdgeInsets.all(16),
-                  isButton: true,
-                  onTapHint:
-                      'Reportar problemas ou barreiras na via de tráfego',
-                  semanticLabel: 'Botão Reportar Obstáculo',
-                  onTap: () {
-                    // Abre o bottom sheet de reporte com uma localização simulada padrão (próximo à UFS)
-                    ReportObstacleBottomSheet.show(
-                      context,
-                      const LatLng(-10.9472, -37.0731),
-                    );
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: AppColors.lightBlueBg,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: AppColors.alertBlue,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Reportar Obstáculo',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                const SizedBox(width: 12),
+                Text(
+                  'Reportar Obstáculo',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 

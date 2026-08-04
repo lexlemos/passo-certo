@@ -20,16 +20,18 @@ class MainScaffold extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        leading: const Icon(
-          Icons.accessible_forward,
-          semanticLabel: 'Ícone de Acessibilidade: Pessoa andando com bengala',
+        leadingWidth: 130,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0),
+          child: SvgPicture.asset(
+            'assets/images/Logo_passoufs.svg',
+            height: 40,
+            fit: BoxFit.contain,
+            semanticsLabel: 'Logo PassoUFS',
+            alignment: Alignment.centerLeft,
+          ),
         ),
-        title: SvgPicture.asset(
-          'assets/images/Logo_passoufs.svg',
-          height: 36,
-          semanticsLabel: 'Logo PassoUFS',
-        ),
-        centerTitle: true,
+        centerTitle: false,
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         actions: [
