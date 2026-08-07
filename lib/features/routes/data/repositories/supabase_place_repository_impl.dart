@@ -135,9 +135,10 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
 
   @override
   Future<Either<Failure, Place>> addPlace(Place place) async {
-    print('================================================');
-    print('[DEBUG_INSERCAO] Iniciando inserção de Local');
-    print('[DEBUG_INSERCAO] Nome: ${place.name}');
+    developer.log(
+      'Iniciando inserção de Local: ${place.name}',
+      name: 'SupabasePlaceRepositoryImpl',
+    );
     try {
       final model = PlaceModel(
         name: place.name,
@@ -149,15 +150,13 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
         isAccessible: place.isAccessible,
       );
 
-      print('[DEBUG_INSERCAO] JSON a ser enviado: ${model.toJson()}');
       final response = await supabaseClient
           .from('places')
           .insert(model.toJson())
           .select()
           .single();
 
-      print('[DEBUG_INSERCAO] Inserção concluída! Resposta: $response');
-      final addedPlace = PlaceModel.fromJson(response as Map<String, dynamic>);
+      final addedPlace = PlaceModel.fromJson(response);
 
       // Atualização otimista no cache
       if (_cachedPlaces != null) {
@@ -166,18 +165,15 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
 
       return Right(addedPlace);
     } on PostgrestException catch (e) {
-      print('[DEBUG_INSERCAO] PostgrestException: ${e.message}');
-      print('[DEBUG_INSERCAO] Detalhes: ${e.details}, Hint: ${e.hint}');
       developer.log(
-        'PostgrestException ao adicionar local: ',
+        'PostgrestException ao adicionar local: ${e.message}',
         error: e,
         name: 'SupabasePlaceRepositoryImpl',
       );
       return Left(ServerFailure('Falha ao adicionar local: ${e.message}'));
     } catch (e) {
-      print('[DEBUG_INSERCAO] Exception Genérica: $e');
       developer.log(
-        'Erro inesperado ao adicionar local: ',
+        'Erro inesperado ao adicionar local: $e',
         error: e,
         name: 'SupabasePlaceRepositoryImpl',
       );
@@ -185,3 +181,4 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
     }
   }
 }
+

@@ -7,6 +7,7 @@ import '../../../../core/widgets/base_button.dart';
 import '../../../../core/widgets/base_card.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import '../../domain/entities/place.dart';
+import '../../domain/entities/navigation_route.dart';
 import '../../domain/usecases/search_address.dart';
 import '../bloc/route_planning_bloc.dart';
 import '../bloc/active_navigation_bloc.dart';
@@ -27,347 +28,418 @@ class RouteSearchCard extends StatelessWidget {
     final searchAddressUseCase = di.sl<SearchAddressUseCase>();
 
     return BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
-      buildWhen: (previous, current) =>
-          previous.selectedFilter != current.selectedFilter,
-      builder: (context, state) {
+      builder: (context, planningState) {
+        final activeNavState = context.watch<ActiveNavigationBloc>().state;
+        final hasRoutes = planningState.routes.isNotEmpty;
+
         return BaseCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           semanticLabel:
               "Formulário de busca de rotas com preenchimento automático",
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Stack(
-                alignment: Alignment.centerRight,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 48.0),
-                    child: Column(
-                      children: [
-                        // Origem Autocomplete
-                        Semantics(
-                          label:
-                              'Campo de texto da Origem. Digite o endereço de partida.',
-                          child: TypeAheadField<Place>(
-                            controller: originController,
-                            suggestionsCallback: (pattern) async {
-                              if (pattern.trim().length < 3) return const [];
-                              final planningState = context
-                                  .read<RoutePlanningBloc>()
-                                  .state;
-                              return await searchAddressUseCase(
-                                pattern,
-                                userLat: planningState.originLat,
-                                userLon: planningState.originLng,
-                              );
-                            },
-                            itemBuilder: (context, place) {
-                              return ListTile(
-                                leading: const Icon(
-                                  Icons.location_on,
-                                  color: AppTheme.spaceBlue,
-                                ),
-                                title: Text(
-                                  place.name,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              );
-                            },
-                            onSelected: (place) {
-                              originController.text = place.name;
-                              context.read<RoutePlanningBloc>().add(
-                                UpdateOriginEvent(
-                                  originText: place.name,
-                                  originLat: place.latitude,
-                                  originLng: place.longitude,
-                                ),
-                              );
-                            },
-                            builder: (context, controller, focusNode) {
-                              return TextFormField(
-                                controller: controller,
-                                focusNode: focusNode,
-                                decoration: InputDecoration(
-                                  labelText: 'Origem',
-                                  hintText: 'Sua localização atual',
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.my_location,
+              if (!hasRoutes) ...[
+                Stack(
+                  alignment: Alignment.centerRight,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 48.0),
+                      child: Column(
+                        children: [
+                          // Origem Autocomplete
+                          Semantics(
+                            label:
+                                'Campo de texto da Origem. Digite o endereço de partida.',
+                            child: TypeAheadField<Place>(
+                              controller: originController,
+                              suggestionsCallback: (pattern) async {
+                                if (pattern.trim().length < 3) return const [];
+                                final state = context
+                                    .read<RoutePlanningBloc>()
+                                    .state;
+                                return await searchAddressUseCase(
+                                  pattern,
+                                  userLat: state.originLat,
+                                  userLon: state.originLng,
+                                );
+                              },
+                              itemBuilder: (context, place) {
+                                return ListTile(
+                                  leading: const Icon(
+                                    Icons.location_on,
                                     color: AppTheme.spaceBlue,
-                                    size: 20,
                                   ),
-                                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                                    valueListenable: controller,
-                                    builder: (context, value, _) {
-                                      final isNotEmpty = value.text.isNotEmpty;
-                                      return Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isNotEmpty)
+                                  title: Text(
+                                    place.name,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              },
+                              onSelected: (place) {
+                                originController.text = place.name;
+                                context.read<RoutePlanningBloc>().add(
+                                  UpdateOriginEvent(
+                                    originText: place.name,
+                                    originLat: place.latitude,
+                                    originLng: place.longitude,
+                                  ),
+                                );
+                              },
+                              builder: (context, controller, focusNode) {
+                                return TextFormField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  decoration: InputDecoration(
+                                    labelText: 'Origem',
+                                    hintText: 'Sua localização atual',
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.my_location,
+                                      color: AppTheme.spaceBlue,
+                                      size: 20,
+                                    ),
+                                    suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                                      valueListenable: controller,
+                                      builder: (context, value, _) {
+                                        final isNotEmpty = value.text.isNotEmpty;
+                                        return Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (isNotEmpty)
+                                              Semantics(
+                                                button: true,
+                                                label: 'Limpar texto da origem',
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    Icons.clear,
+                                                    size: 18,
+                                                  ),
+                                                  onPressed: () {
+                                                    controller.clear();
+                                                    context
+                                                        .read<RoutePlanningBloc>()
+                                                        .add(ClearOriginEvent());
+                                                  },
+                                                ),
+                                              ),
                                             Semantics(
                                               button: true,
-                                              label: 'Limpar texto da origem',
+                                              label:
+                                                  'Botão Minha Localização. Obter localização atual via GPS.',
                                               child: IconButton(
                                                 icon: const Icon(
-                                                  Icons.clear,
+                                                  Icons.my_location,
+                                                  color: AppTheme.spaceBlue,
                                                   size: 18,
                                                 ),
                                                 onPressed: () {
-                                                  controller.clear();
                                                   context
                                                       .read<RoutePlanningBloc>()
-                                                      .add(ClearOriginEvent());
+                                                      .add(
+                                                        FetchCurrentLocationForOriginEvent(),
+                                                      );
                                                 },
                                               ),
                                             ),
-                                          Semantics(
-                                            button: true,
-                                            label:
-                                                'Botão Minha Localização. Obter localização atual via GPS.',
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.my_location,
-                                                color: AppTheme.spaceBlue,
-                                                size: 18,
-                                              ),
-                                              onPressed: () {
-                                                context
-                                                    .read<RoutePlanningBloc>()
-                                                    .add(
-                                                      FetchCurrentLocationForOriginEvent(),
-                                                    );
-                                              },
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.softGreyBg,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
                                   ),
-                                  filled: true,
-                                  fillColor: AppTheme.softGreyBg,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Destino Autocomplete
-                        Semantics(
-                          label:
-                              'Campo de texto do Destino. Digite o endereço de destino.',
-                          child: TypeAheadField<Place>(
-                            controller: destinationController,
-                            suggestionsCallback: (pattern) async {
-                              if (pattern.trim().length < 3) return const [];
-                              final planningState = context
-                                  .read<RoutePlanningBloc>()
-                                  .state;
-                              return await searchAddressUseCase(
-                                pattern,
-                                userLat: planningState.originLat,
-                                userLon: planningState.originLng,
-                              );
-                            },
-                            itemBuilder: (context, place) {
-                              return ListTile(
-                                leading: const Icon(
-                                  Icons.location_on,
-                                  color: AppTheme.mintGreen,
-                                ),
-                                title: Text(
-                                  place.name,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              );
-                            },
-                            onSelected: (place) {
-                              destinationController.text = place.name;
-                              context.read<RoutePlanningBloc>().add(
-                                UpdateDestinationEvent(
-                                  destinationText: place.name,
-                                  destLat: place.latitude,
-                                  destLng: place.longitude,
-                                ),
-                              );
-                            },
-                            builder: (context, controller, focusNode) {
-                              return TextFormField(
-                                controller: controller,
-                                focusNode: focusNode,
-                                decoration: InputDecoration(
-                                  labelText: 'Destino',
-                                  hintText: 'Para onde quer ir?',
-                                  isDense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  prefixIcon: const Icon(
+                          const SizedBox(height: 8),
+                          // Destino Autocomplete
+                          Semantics(
+                            label:
+                                'Campo de texto do Destino. Digite o endereço de destino.',
+                            child: TypeAheadField<Place>(
+                              controller: destinationController,
+                              suggestionsCallback: (pattern) async {
+                                if (pattern.trim().length < 3) return const [];
+                                final state = context
+                                    .read<RoutePlanningBloc>()
+                                    .state;
+                                return await searchAddressUseCase(
+                                  pattern,
+                                  userLat: state.originLat,
+                                  userLon: state.originLng,
+                                );
+                              },
+                              itemBuilder: (context, place) {
+                                return ListTile(
+                                  leading: const Icon(
                                     Icons.location_on,
-                                    color: AppTheme.mintGreen,
-                                    size: 20,
+                                    color: AppTheme.spaceBlue,
                                   ),
-                                  suffixIcon:
-                                      ValueListenableBuilder<TextEditingValue>(
-                                        valueListenable: controller,
-                                        builder: (context, value, _) {
-                                          if (value.text.isEmpty) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return Semantics(
-                                            button: true,
-                                            label: 'Limpar texto do destino',
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.clear,
-                                                size: 18,
-                                              ),
-                                              onPressed: () {
-                                                controller.clear();
-                                                context
-                                                    .read<RoutePlanningBloc>()
-                                                    .add(
-                                                      ClearDestinationEvent(),
-                                                    );
-                                              },
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                  filled: true,
-                                  fillColor: AppTheme.softGreyBg,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
+                                  title: Text(
+                                    place.name,
+                                    style: const TextStyle(fontSize: 14),
                                   ),
+                                );
+                              },
+                              onSelected: (place) {
+                                destinationController.text = place.name;
+                                context.read<RoutePlanningBloc>().add(
+                                  UpdateDestinationEvent(
+                                    destinationText: place.name,
+                                    destLat: place.latitude,
+                                    destLng: place.longitude,
+                                  ),
+                                );
+                              },
+                              builder: (context, controller, focusNode) {
+                                return TextFormField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  decoration: InputDecoration(
+                                    labelText: 'Destino',
+                                    hintText: 'Para onde você quer ir?',
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.location_on,
+                                      color: AppTheme.spaceBlue,
+                                      size: 20,
+                                    ),
+                                    suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                                      valueListenable: controller,
+                                      builder: (context, value, _) {
+                                        final isNotEmpty = value.text.isNotEmpty;
+                                        return isNotEmpty
+                                            ? Semantics(
+                                                button: true,
+                                                label:
+                                                    'Limpar texto do destino',
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    Icons.clear,
+                                                    size: 18,
+                                                  ),
+                                                  onPressed: () {
+                                                    controller.clear();
+                                                    context
+                                                        .read<RoutePlanningBloc>()
+                                                        .add(
+                                                          ClearDestinationEvent(),
+                                                        );
+                                                  },
+                                                ),
+                                              )
+                                            : const SizedBox.shrink();
+                                      },
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.softGreyBg,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: Semantics(
+                        button: true,
+                        label:
+                            'Botão Inverter Origem e Destino. Trocar pontos de partida e chegada.',
+                        child: Material(
+                          color: AppTheme.softGreyBg,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.swap_vert,
+                              color: AppTheme.spaceBlue,
+                              size: 22,
+                            ),
+                            onPressed: () {
+                              context.read<RoutePlanningBloc>().add(
+                                SwapLocationsEvent(
+                                  originText: originController.text,
+                                  destinationText: destinationController.text,
                                 ),
                               );
                             },
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    child: Semantics(
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // --------------------------------------------------------------
+              // ESTADO COM ROTAS (HUD DUAL-OPTION COM WCAG AAA)
+              // --------------------------------------------------------------
+              if (hasRoutes) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Opções de Rota',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.spaceBlue,
+                      ),
+                    ),
+                    Semantics(
                       button: true,
-                      label: "Inverter origem e destino",
-                      child: FloatingActionButton.small(
-                        onPressed: () => context.read<RoutePlanningBloc>().add(
-                          SwapLocationsEvent(
-                            originText: originController.text,
-                            destinationText: destinationController.text,
+                      label: 'Limpar busca de rotas',
+                      child: InkWell(
+                        onTap: () {
+                          destinationController.clear();
+                          context
+                              .read<RoutePlanningBloc>()
+                              .add(ClearDestinationEvent());
+                          context
+                              .read<RoutePlanningBloc>()
+                              .add(ClearRouteSearchEvent());
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.close,
+                                size: 16,
+                                color: AppTheme.spaceBlue,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Nova busca',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.spaceBlue,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        backgroundColor: theme.scaffoldBackgroundColor,
-                        elevation: 2,
-                        child: const Icon(
-                          Icons.swap_vert,
-                          color: AppTheme.spaceBlue,
-                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _FilterChip(
-                    label: 'Totalmente Acessível',
-                    icon: Icons.accessible,
-                    isSelected: state.selectedFilter == 'accessible',
-                    filterValue: 'accessible',
-                  ),
-                  _FilterChip(
-                    label: 'Mais Rápida',
-                    icon: Icons.timer,
-                    isSelected: state.selectedFilter == 'fastest',
-                    filterValue: 'fastest',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
-                builder: (context, planningState) {
-                  final activeNavState = context
-                      .watch<ActiveNavigationBloc>()
-                      .state;
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: planningState.routes.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final route = entry.value;
+                    final isSelected =
+                        index == planningState.selectedRouteIndex;
 
-                  if (activeNavState.isActive) {
-                    return BaseButton(
-                      label: 'Parar Navegação',
-                      semanticLabel: 'Botão. Parar navegação guiada ativa.',
-                      icon: const Icon(Icons.stop, color: Colors.white),
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.emergencyRed, Colors.redAccent],
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: index == 0 ? 0 : 4,
+                          right: index == planningState.routes.length - 1
+                              ? 0
+                              : 4,
+                        ),
+                        child: _RouteOptionButton(
+                          route: route,
+                          isSelected: isSelected,
+                          onTap: () {
+                            context.read<RoutePlanningBloc>().add(
+                              SelectRouteEvent(routeIndex: index),
+                            );
+                          },
+                        ),
                       ),
-                      onPressed: () {
-                        context.read<ActiveNavigationBloc>().add(
-                          StopNavigationEvent(),
-                        );
-                      },
                     );
-                  }
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
 
-                  if (planningState.routes.isNotEmpty) {
+              // --------------------------------------------------------------
+              // BOTÃO DE AÇÃO PRINCIPAL (INICIAR / PARAR / BUSCAR)
+              // --------------------------------------------------------------
+              if (activeNavState.isActive) ...[
+                BaseButton(
+                  label: 'Parar Navegação',
+                  semanticLabel: 'Botão. Parar navegação guiada ativa.',
+                  icon: const Icon(Icons.stop, color: Colors.white),
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.emergencyRed, Colors.redAccent],
+                  ),
+                  onPressed: () {
+                    context.read<ActiveNavigationBloc>().add(
+                      StopNavigationEvent(),
+                    );
+                  },
+                ),
+              ] else if (hasRoutes) ...[
+                BaseButton(
+                  label: 'Iniciar Navegação',
+                  semanticLabel:
+                      'Botão. Iniciar navegação guiada por voz para a rota selecionada.',
+                  icon: const Icon(Icons.navigation, color: Colors.white),
+                  onPressed: () {
                     final selectedRoute =
                         planningState.routes[planningState.selectedRouteIndex];
-                    return BaseButton(
-                      label: 'Iniciar Navegação',
-                      semanticLabel:
-                          'Botão. Iniciar navegação guiada por voz para a rota selecionada.',
-                      icon: const Icon(Icons.navigation, color: Colors.white),
-                      onPressed: () {
-                        context.read<ActiveNavigationBloc>().add(
-                          StartNavigationEvent(selectedRoute),
-                        );
-                      },
+                    context.read<ActiveNavigationBloc>().add(
+                      StartNavigationEvent(selectedRoute),
                     );
-                  }
-
-                  final canSearch =
-                      planningState.originLat != null &&
-                      planningState.destLat != null &&
-                      !planningState.isLoading;
-
-                  return BaseButton(
-                    label: planningState.isLoading
-                        ? 'Buscando...'
-                        : 'Buscar Rotas',
-                    semanticLabel: 'Botão. Buscar melhores rotas acessíveis.',
-                    icon: planningState.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.search, color: Colors.white),
-                    onPressed: canSearch
-                        ? () {
-                            context.read<RoutePlanningBloc>().add(
-                              CalculateRouteEvent(),
-                            );
-                            FocusScope.of(context).unfocus();
-                          }
-                        : null,
-                  );
-                },
-              ),
+                  },
+                ),
+              ] else ...[
+                BaseButton(
+                  label: planningState.isLoading
+                      ? 'Buscando...'
+                      : 'Buscar Rotas',
+                  semanticLabel: 'Botão. Buscar melhores rotas acessíveis.',
+                  icon: planningState.isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.search, color: Colors.white),
+                  onPressed:
+                      (planningState.originLat != null &&
+                              planningState.destLat != null &&
+                              !planningState.isLoading)
+                          ? () {
+                              context.read<RoutePlanningBloc>().add(
+                                CalculateRouteEvent(),
+                              );
+                              FocusScope.of(context).unfocus();
+                            }
+                          : null,
+                ),
+              ],
             ],
           ),
         );
@@ -376,38 +448,117 @@ class RouteSearchCard extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
+/// Botão minimalista de alto contraste (WCAG AAA) para seleção de rotas no HUD.
+class _RouteOptionButton extends StatelessWidget {
+  final NavigationRoute route;
   final bool isSelected;
-  final String filterValue;
+  final VoidCallback onTap;
 
-  const _FilterChip({
-    required this.label,
-    required this.icon,
+  const _RouteOptionButton({
+    required this.route,
     required this.isSelected,
-    required this.filterValue,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      avatar: Icon(
-        icon,
-        size: 18,
-        color: isSelected ? AppTheme.mintGreen : AppTheme.textMuted,
-      ),
+    final isAccessible =
+        route.title.toLowerCase().contains('acessível') ||
+        route.accessibilityScore >= 0.8;
+    final icon = isAccessible ? Icons.accessible : Icons.directions_walk;
+
+    final scorePct = (route.accessibilityScore * 100).round();
+    final String scoreTag;
+    if (route.accessibilityScore >= 0.85) {
+      scoreTag = 'Piso ideal • $scorePct%';
+    } else if (route.accessibilityScore >= 0.70) {
+      scoreTag = 'Acessível • $scorePct%';
+    } else {
+      scoreTag = 'Caminho padrão • $scorePct%';
+    }
+
+    final accentColor =
+        isAccessible ? AppTheme.mintGreen : const Color(0xFF2196F3);
+
+    // Paleta Limpa de Alto Contraste (Fundo Neutro + Borda de Destaque Vibrante)
+    final backgroundColor = isSelected
+        ? (isAccessible
+            ? AppTheme.mintGreen.withValues(alpha: 0.14)
+            : const Color(0xFF2196F3).withValues(alpha: 0.14))
+        : AppTheme.softGreyBg;
+    final borderColor = isSelected ? accentColor : Colors.grey.shade300;
+    final textColor = AppTheme.spaceBlue;
+    final subtitleColor = isSelected ? accentColor : AppTheme.spaceBlue;
+    final iconColor = accentColor;
+
+    return Semantics(
+      button: true,
       selected: isSelected,
-      selectedColor: AppTheme.mintGreen.withValues(alpha: 0.1),
-      backgroundColor: AppTheme.softGreyBg,
-      labelStyle: TextStyle(
-        color: isSelected ? AppTheme.mintGreen : AppTheme.textMuted,
-        fontWeight: FontWeight.bold,
-      ),
-      onSelected: (_) => context.read<RoutePlanningBloc>().add(
-        SelectFilterEvent(filter: filterValue),
+      label:
+          'Rota ${route.title}, Duração ${route.estimatedTime}, Distância ${route.distance}, $scoreTag. ${isSelected ? "Selecionada" : "Toque para selecionar esta rota"}.',
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: borderColor,
+                width: isSelected ? 2.5 : 1.0,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, color: iconColor, size: 18),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        route.title,
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${route.estimatedTime} (${route.distance})',
+                  style: TextStyle(
+                    color: subtitleColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  scoreTag,
+                  style: TextStyle(
+                    color: isSelected ? AppTheme.spaceBlue : AppTheme.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
+

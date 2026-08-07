@@ -45,6 +45,7 @@ Future<void> init() async {
       calculateAccessibleRouteUseCase: sl(),
       profileNavigationBloc: sl(),
       getCurrentLocationPlaceUseCase: sl(),
+      getObstaclesUseCase: sl(),
     ),
   );
   sl.registerLazySingleton(() => ProfileNavigationBloc());

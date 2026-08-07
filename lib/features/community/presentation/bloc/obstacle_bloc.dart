@@ -149,12 +149,18 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
 
     await result.fold(
       (failure) async {
-        print('[DEBUG_INSERCAO] Falha capturada no BLoC: ${failure.message}');
+        developer.log(
+          'Falha capturada no BLoC: ${failure.message}',
+          name: 'DebugInsercao',
+        );
         // Reverte se falhou
         final revertedList = state.obstacles
             .where((o) => o.id != newObstacle.id)
             .toList();
-        print('[DEBUG_INSERCAO] Revertendo lista (Removendo ID ${newObstacle.id})');
+        developer.log(
+          'Revertendo lista (Removendo ID ${newObstacle.id})',
+          name: 'DebugInsercao',
+        );
         emit(
           state.copyWith(
             isLoading: false,
@@ -164,20 +170,30 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
         );
       },
       (_) async {
-        print('[DEBUG_INSERCAO] Sucesso retornado pelo UseCase!');
+        developer.log(
+          'Sucesso retornado pelo UseCase!',
+          name: 'DebugInsercao',
+        );
         emit(state.copyWith(isLoading: false, isReportedSuccess: true));
         // Refetch silencioso
         final reloadResult = await _getObstaclesUseCase();
         reloadResult.fold(
           (failure) {
-             print('[DEBUG_INSERCAO] Refetch falhou silenciosamente: ${failure.message}');
+            developer.log(
+              'Refetch falhou silenciosamente: ${failure.message}',
+              name: 'DebugInsercao',
+            );
           },
           (obstacles) {
-             print('[DEBUG_INSERCAO] Refetch com sucesso. ${obstacles.length} obstáculos encontrados.');
-             emit(state.copyWith(obstacles: obstacles));
+            developer.log(
+              'Refetch com sucesso. ${obstacles.length} obstáculos encontrados.',
+              name: 'DebugInsercao',
+            );
+            emit(state.copyWith(obstacles: obstacles));
           },
         );
       },
     );
   }
 }
+

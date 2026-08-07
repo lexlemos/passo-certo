@@ -1,7 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:uuid/uuid.dart';
 
 import 'dart:developer' as developer;
 
@@ -106,12 +105,18 @@ class AddPlaceBloc extends Bloc<AddPlaceEvent, AddPlaceState> {
     final result = await _addPlaceUseCase(place);
 
     result.fold((failure) {
-      print('[DEBUG_INSERCAO] Falha capturada no BLoC (Place): ${failure.message}');
+      developer.log(
+        'Falha capturada no BLoC (Place): ${failure.message}',
+        name: 'DebugInsercao',
+      );
       // Reverte
       final reverted = state.newlyAddedPlaces
           .where((p) => p.name != place.name && p.latitude != place.latitude)
           .toList();
-      print('[DEBUG_INSERCAO] Revertendo lista de locais');
+      developer.log(
+        'Revertendo lista de locais',
+        name: 'DebugInsercao',
+      );
       emit(
         state.copyWith(
           isLoading: false,
@@ -120,8 +125,12 @@ class AddPlaceBloc extends Bloc<AddPlaceEvent, AddPlaceState> {
         ),
       );
     }, (addedPlace) {
-      print('[DEBUG_INSERCAO] Sucesso retornado pelo UseCase (Place)!');
+      developer.log(
+        'Sucesso retornado pelo UseCase (Place)!',
+        name: 'DebugInsercao',
+      );
       emit(state.copyWith(isLoading: false, isSuccess: true));
     });
   }
 }
+

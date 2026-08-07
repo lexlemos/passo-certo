@@ -5,6 +5,8 @@ import 'package:equatable/equatable.dart';
 import '../../domain/entities/navigation_route.dart';
 import '../../domain/usecases/calculate_accessible_route.dart';
 import '../../domain/usecases/get_current_location_place.dart';
+import '../../../community/domain/entities/obstacle.dart';
+import '../../../community/domain/usecases/get_obstacles.dart';
 import '../../../profile/presentation/bloc/profile_navigation_bloc.dart';
 
 // --- EVENTS ---
@@ -65,6 +67,8 @@ class FetchCurrentLocationForOriginEvent extends RoutePlanningEvent {}
 class ClearOriginEvent extends RoutePlanningEvent {}
 
 class ClearDestinationEvent extends RoutePlanningEvent {}
+
+class ClearRouteSearchEvent extends RoutePlanningEvent {}
 
 // --- STATE ---
 class RoutePlanningState extends Equatable {
@@ -163,14 +167,17 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
   final CalculateAccessibleRouteUseCase _calculateAccessibleRouteUseCase;
   final ProfileNavigationBloc _profileNavigationBloc;
   final GetCurrentLocationPlaceUseCase _getCurrentLocationPlaceUseCase;
+  final GetObstaclesUseCase _getObstaclesUseCase;
 
   RoutePlanningBloc({
     required CalculateAccessibleRouteUseCase calculateAccessibleRouteUseCase,
     required ProfileNavigationBloc profileNavigationBloc,
     required GetCurrentLocationPlaceUseCase getCurrentLocationPlaceUseCase,
+    required GetObstaclesUseCase getObstaclesUseCase,
   }) : _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
        _profileNavigationBloc = profileNavigationBloc,
        _getCurrentLocationPlaceUseCase = getCurrentLocationPlaceUseCase,
+       _getObstaclesUseCase = getObstaclesUseCase,
        super(const RoutePlanningState._empty()) {
     on<LoadRoutesEvent>(_onLoadRoutes);
     on<SwapLocationsEvent>(_onSwapLocations);
@@ -183,6 +190,7 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
     on<FetchCurrentLocationForOriginEvent>(_onFetchCurrentLocationForOrigin);
     on<ClearOriginEvent>(_onClearOrigin);
     on<ClearDestinationEvent>(_onClearDestination);
+    on<ClearRouteSearchEvent>(_onClearRouteSearch);
 
     // Dispara o carregamento inicial buscando dados do repositório via UseCase
     add(LoadRoutesEvent());
@@ -273,6 +281,9 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
         originText: event.originText,
         originLat: event.originLat,
         originLng: event.originLng,
+        routes: const [],
+        recommendedRoute: null,
+        selectedRouteIndex: 0,
       ),
     );
   }
@@ -286,6 +297,9 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
         destinationText: event.destinationText,
         destLat: event.destLat,
         destLng: event.destLng,
+        routes: const [],
+        recommendedRoute: null,
+        selectedRouteIndex: 0,
       ),
     );
   }
@@ -320,6 +334,13 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
     final avoidStairs = profileState.avoidStairs;
     final requiresTactilePaving = profileState.voiceNavigation;
 
+    // Injeção Reativa: Busca os obstáculos ativos comunitários mais recentes antes de calcular a rota
+    final obstaclesResult = await _getObstaclesUseCase();
+    final activeObstacles = obstaclesResult.fold(
+      (_) => <Obstacle>[],
+      (obstacles) => obstacles,
+    );
+
     final result = await _calculateAccessibleRouteUseCase(
       originLat: originLat,
       originLng: originLng,
@@ -327,6 +348,7 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
       destLng: destLng,
       avoidStairs: avoidStairs,
       requiresTactilePaving: requiresTactilePaving,
+      activeObstacles: activeObstacles,
     );
 
     result.fold(
@@ -408,6 +430,21 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
         routes: const [],
         recommendedRoute: null,
         selectedRouteIndex: 0,
+      ),
+    );
+  }
+
+  void _onClearRouteSearch(
+    ClearRouteSearchEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        routes: const [],
+        recommendedRoute: null,
+        selectedRouteIndex: 0,
+        isLoading: false,
+        errorMessage: () => null,
       ),
     );
   }

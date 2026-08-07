@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import '../config/app_constants.dart';
 
 class GeoUtils {
   /// Cria um polígono de exclusão (Bounding Box) ao redor de um ponto.
@@ -13,7 +12,7 @@ class GeoUtils {
   static List<List<double>> createBoundingBoxPolygon(
     double lat,
     double lon, {
-    double radiusInMeters = AppConstants.obstacleProximityRadiusMeters,
+    double radiusInMeters = 10.0,
   }) {
     const double earthRadius = 6378137.0; // Raio da Terra no equador em metros
 
