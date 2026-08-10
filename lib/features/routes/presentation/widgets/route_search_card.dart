@@ -12,7 +12,7 @@ import '../../domain/usecases/search_address.dart';
 import '../bloc/route_planning_bloc.dart';
 import '../bloc/active_navigation_bloc.dart';
 
-class RouteSearchCard extends StatelessWidget {
+class RouteSearchCard extends StatefulWidget {
   final TextEditingController originController;
   final TextEditingController destinationController;
 
@@ -21,6 +21,36 @@ class RouteSearchCard extends StatelessWidget {
     required this.originController,
     required this.destinationController,
   });
+
+  @override
+  State<RouteSearchCard> createState() => _RouteSearchCardState();
+}
+
+class _RouteSearchCardState extends State<RouteSearchCard> {
+  final FocusNode _destinationFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _destinationFocusNode.addListener(_onFocusChange);
+    widget.destinationController.addListener(_onTextChange);
+  }
+
+  @override
+  void dispose() {
+    _destinationFocusNode.removeListener(_onFocusChange);
+    widget.destinationController.removeListener(_onTextChange);
+    _destinationFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    setState(() {});
+  }
+
+  void _onTextChange() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +83,7 @@ class RouteSearchCard extends StatelessWidget {
                             label:
                                 'Campo de texto da Origem. Digite o endereço de partida.',
                             child: TypeAheadField<Place>(
-                              controller: originController,
+                              controller: widget.originController,
                               suggestionsCallback: (pattern) async {
                                 if (pattern.trim().length < 3) return const [];
                                 final state = context
@@ -78,7 +108,7 @@ class RouteSearchCard extends StatelessWidget {
                                 );
                               },
                               onSelected: (place) {
-                                originController.text = place.name;
+                                widget.originController.text = place.name;
                                 context.read<RoutePlanningBloc>().add(
                                   UpdateOriginEvent(
                                     originText: place.name,
@@ -168,22 +198,29 @@ class RouteSearchCard extends StatelessWidget {
                             label:
                                 'Campo de texto do Destino. Digite o endereço de destino.',
                             child: TypeAheadField<Place>(
-                              controller: destinationController,
+                              controller: widget.destinationController,
+                              focusNode: _destinationFocusNode,
                               suggestionsCallback: (pattern) async {
-                                if (pattern.trim().length < 3) return const [];
                                 final state = context
                                     .read<RoutePlanningBloc>()
                                     .state;
+                                if (pattern.isEmpty) {
+                                  return state.recentSearches;
+                                }
+                                if (pattern.trim().length < 3) return const [];
                                 return await searchAddressUseCase(
                                   pattern,
                                   userLat: state.originLat,
                                   userLon: state.originLng,
                                 );
                               },
+                              emptyBuilder: (context) => const SizedBox.shrink(),
                               itemBuilder: (context, place) {
+                                final state = context.read<RoutePlanningBloc>().state;
+                                final isRecent = state.recentSearches.any((p) => p.name == place.name);
                                 return ListTile(
-                                  leading: const Icon(
-                                    Icons.location_on,
+                                  leading: Icon(
+                                    isRecent ? Icons.history : Icons.location_on,
                                     color: AppTheme.spaceBlue,
                                   ),
                                   title: Text(
@@ -193,7 +230,8 @@ class RouteSearchCard extends StatelessWidget {
                                 );
                               },
                               onSelected: (place) {
-                                destinationController.text = place.name;
+                                widget.destinationController.text = place.name;
+                                _destinationFocusNode.unfocus();
                                 context.read<RoutePlanningBloc>().add(
                                   UpdateDestinationEvent(
                                     destinationText: place.name,
@@ -201,6 +239,10 @@ class RouteSearchCard extends StatelessWidget {
                                     destLng: place.longitude,
                                   ),
                                 );
+                                final state = context.read<RoutePlanningBloc>().state;
+                                if (state.originLat != null) {
+                                  context.read<RoutePlanningBloc>().add(CalculateRouteEvent());
+                                }
                               },
                               builder: (context, controller, focusNode) {
                                 return TextFormField(
@@ -278,8 +320,8 @@ class RouteSearchCard extends StatelessWidget {
                             onPressed: () {
                               context.read<RoutePlanningBloc>().add(
                                 SwapLocationsEvent(
-                                  originText: originController.text,
-                                  destinationText: destinationController.text,
+                                  originText: widget.originController.text,
+                                  destinationText: widget.destinationController.text,
                                 ),
                               );
                             },
@@ -311,7 +353,7 @@ class RouteSearchCard extends StatelessWidget {
                       label: 'Limpar busca de rotas',
                       child: InkWell(
                         onTap: () {
-                          destinationController.clear();
+                          widget.destinationController.clear();
                           context
                               .read<RoutePlanningBloc>()
                               .add(ClearDestinationEvent());

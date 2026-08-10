@@ -8,6 +8,9 @@ import '../../domain/usecases/get_current_location_place.dart';
 import '../../../community/domain/entities/obstacle.dart';
 import '../../../community/domain/usecases/get_obstacles.dart';
 import '../../../profile/presentation/bloc/profile_navigation_bloc.dart';
+import '../../domain/usecases/get_recent_searches.dart';
+import '../../domain/usecases/save_recent_search.dart';
+import '../../domain/entities/place.dart';
 
 // --- EVENTS ---
 abstract class RoutePlanningEvent {}
@@ -37,6 +40,8 @@ class SelectRouteEvent extends RoutePlanningEvent {
 /// Evento interno disparado pelo próprio BLoC no construtor
 /// para carregar o estado inicial com os dados vindos do repositório.
 class LoadRoutesEvent extends RoutePlanningEvent {}
+
+class LoadRecentSearchesEvent extends RoutePlanningEvent {}
 
 class UpdateOriginEvent extends RoutePlanningEvent {
   final String originText;
@@ -84,6 +89,7 @@ class RoutePlanningState extends Equatable {
   final int selectedRouteIndex;
   final bool isLoading;
   final String? errorMessage;
+  final List<Place> recentSearches;
 
   const RoutePlanningState({
     required this.originText,
@@ -98,6 +104,7 @@ class RoutePlanningState extends Equatable {
     required this.selectedRouteIndex,
     this.isLoading = false,
     this.errorMessage,
+    this.recentSearches = const [],
   });
 
   /// Estado vazio seguro para inicialização — sem dados mock.
@@ -113,7 +120,8 @@ class RoutePlanningState extends Equatable {
       recommendedRoute = null,
       selectedRouteIndex = 0,
       isLoading = false,
-      errorMessage = null;
+      errorMessage = null,
+      recentSearches = const [];
 
   RoutePlanningState copyWith({
     String? originText,
@@ -128,6 +136,7 @@ class RoutePlanningState extends Equatable {
     int? selectedRouteIndex,
     bool? isLoading,
     ValueGetter<String?>? errorMessage,
+    List<Place>? recentSearches,
   }) {
     return RoutePlanningState(
       originText: originText ?? this.originText,
@@ -142,6 +151,7 @@ class RoutePlanningState extends Equatable {
       selectedRouteIndex: selectedRouteIndex ?? this.selectedRouteIndex,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
+      recentSearches: recentSearches ?? this.recentSearches,
     );
   }
 
@@ -159,6 +169,7 @@ class RoutePlanningState extends Equatable {
     selectedRouteIndex,
     isLoading,
     errorMessage,
+    recentSearches,
   ];
 }
 
@@ -168,18 +179,25 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
   final ProfileNavigationBloc _profileNavigationBloc;
   final GetCurrentLocationPlaceUseCase _getCurrentLocationPlaceUseCase;
   final GetObstaclesUseCase _getObstaclesUseCase;
+  final SaveRecentSearchUseCase _saveRecentSearchUseCase;
+  final GetRecentSearchesUseCase _getRecentSearchesUseCase;
 
   RoutePlanningBloc({
     required CalculateAccessibleRouteUseCase calculateAccessibleRouteUseCase,
     required ProfileNavigationBloc profileNavigationBloc,
     required GetCurrentLocationPlaceUseCase getCurrentLocationPlaceUseCase,
     required GetObstaclesUseCase getObstaclesUseCase,
+    required SaveRecentSearchUseCase saveRecentSearchUseCase,
+    required GetRecentSearchesUseCase getRecentSearchesUseCase,
   }) : _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
        _profileNavigationBloc = profileNavigationBloc,
        _getCurrentLocationPlaceUseCase = getCurrentLocationPlaceUseCase,
        _getObstaclesUseCase = getObstaclesUseCase,
+       _saveRecentSearchUseCase = saveRecentSearchUseCase,
+       _getRecentSearchesUseCase = getRecentSearchesUseCase,
        super(const RoutePlanningState._empty()) {
     on<LoadRoutesEvent>(_onLoadRoutes);
+    on<LoadRecentSearchesEvent>(_onLoadRecentSearches);
     on<SwapLocationsEvent>(_onSwapLocations);
     on<SelectFilterEvent>(_onSelectFilter);
     on<SearchRoutesEvent>(_onSearchRoutes);
@@ -194,6 +212,15 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
 
     // Dispara o carregamento inicial buscando dados do repositório via UseCase
     add(LoadRoutesEvent());
+    add(LoadRecentSearchesEvent());
+  }
+
+  Future<void> _onLoadRecentSearches(
+    LoadRecentSearchesEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) async {
+    final recentSearches = await _getRecentSearchesUseCase();
+    emit(state.copyWith(recentSearches: recentSearches));
   }
 
   /// Carrega as rotas e calcula a recomendada de forma assíncrona a partir da camada de dados.
@@ -330,51 +357,79 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
       ),
     );
 
-    final profileState = _profileNavigationBloc.state;
-    final avoidStairs = profileState.avoidStairs;
-    final requiresTactilePaving = profileState.voiceNavigation;
+    try {
+      final profileState = _profileNavigationBloc.state;
+      final avoidStairs = profileState.avoidStairs;
+      final requiresTactilePaving = profileState.voiceNavigation;
 
-    // Injeção Reativa: Busca os obstáculos ativos comunitários mais recentes antes de calcular a rota
-    final obstaclesResult = await _getObstaclesUseCase();
-    final activeObstacles = obstaclesResult.fold(
-      (_) => <Obstacle>[],
-      (obstacles) => obstacles,
-    );
+      // Injeção Reativa: Busca os obstáculos ativos comunitários mais recentes antes de calcular a rota
+      final obstaclesResult = await _getObstaclesUseCase();
+      final activeObstacles = obstaclesResult.fold(
+        (_) => <Obstacle>[],
+        (obstacles) => obstacles,
+      );
 
-    final result = await _calculateAccessibleRouteUseCase(
-      originLat: originLat,
-      originLng: originLng,
-      destLat: destLat,
-      destLng: destLng,
-      avoidStairs: avoidStairs,
-      requiresTactilePaving: requiresTactilePaving,
-      activeObstacles: activeObstacles,
-    );
+      final result = await _calculateAccessibleRouteUseCase(
+        originLat: originLat,
+        originLng: originLng,
+        destLat: destLat,
+        destLng: destLng,
+        avoidStairs: avoidStairs,
+        requiresTactilePaving: requiresTactilePaving,
+        activeObstacles: activeObstacles,
+      );
 
-    result.fold(
-      (failure) {
+      await result.fold(
+        (failure) async {
+          if (!emit.isDone) {
+            emit(
+              state.copyWith(
+                routes: const [],
+                recommendedRoute: null,
+                selectedRouteIndex: 0,
+                isLoading: false,
+                errorMessage: () => failure.message,
+              ),
+            );
+          }
+        },
+        (routes) async {
+          final destinationPlace = Place(
+            name: state.destinationText,
+            latitude: state.destLat!,
+            longitude: state.destLng!,
+          );
+          
+          await _saveRecentSearchUseCase(destinationPlace);
+          final recentSearches = await _getRecentSearchesUseCase();
+
+          if (!emit.isDone) {
+            emit(
+              state.copyWith(
+                routes: routes,
+                recommendedRoute: routes.isNotEmpty ? routes.first : null,
+                selectedRouteIndex: 0,
+                isLoading: false,
+                errorMessage: () => null,
+                recentSearches: recentSearches,
+              ),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      if (!emit.isDone) {
         emit(
           state.copyWith(
             routes: const [],
             recommendedRoute: null,
             selectedRouteIndex: 0,
             isLoading: false,
-            errorMessage: () => failure.message,
+            errorMessage: () => e.toString(),
           ),
         );
-      },
-      (routes) {
-        emit(
-          state.copyWith(
-            routes: routes,
-            recommendedRoute: routes.isNotEmpty ? routes.first : null,
-            selectedRouteIndex: 0,
-            isLoading: false,
-            errorMessage: () => null,
-          ),
-        );
-      },
-    );
+      }
+    }
   }
 
   Future<void> _onFetchCurrentLocationForOrigin(
