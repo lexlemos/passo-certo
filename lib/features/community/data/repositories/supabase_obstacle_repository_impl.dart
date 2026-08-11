@@ -46,6 +46,46 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
     }
   }
 
+  /// Marca um obstáculo existente como `RESOLVED` (soft-delete).
+  ///
+  /// O obstáculo não é removido fisicamente; apenas seu `status` é atualizado
+  /// para `'RESOLVED'`, fazendo com que ele deixe de aparecer no mapa
+  /// (pois [getObstacles] filtra apenas `status = 'ACTIVE'`).
+  @override
+  Future<Either<Failure, void>> deleteObstacle(String obstacleId) async {
+    developer.log(
+      'Iniciando exclusão (soft-delete) do Obstáculo. ID: $obstacleId',
+      name: 'SupabaseObstacleRepositoryImpl',
+    );
+    try {
+      await supabaseClient
+          .from('obstacles')
+          .update({'status': 'RESOLVED'})
+          .eq('id', obstacleId);
+
+      developer.log(
+        'Obstáculo marcado como RESOLVED com sucesso!',
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
+
+      return const Right(null);
+    } on PostgrestException catch (e) {
+      developer.log(
+        'PostgrestException ao excluir obstáculo: ${e.message}',
+        error: e,
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
+      return Left(ServerFailure('Falha ao excluir obstáculo: ${e.message}'));
+    } catch (e) {
+      developer.log(
+        'Erro inesperado ao excluir obstáculo: $e',
+        error: e,
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
+      return Left(ServerFailure('Erro inesperado ao excluir obstáculo: $e'));
+    }
+  }
+
   /// Persiste um novo obstáculo na tabela `obstacles`.
   ///
   /// O [Obstacle.id] recebido deve ser um UUID v4 gerado no cliente

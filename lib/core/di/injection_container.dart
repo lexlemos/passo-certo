@@ -32,6 +32,7 @@ import '../../features/routes/data/repositories/recent_search_repository_impl.da
 
 import '../../features/community/data/repositories/supabase_obstacle_repository_impl.dart';
 import '../../features/community/domain/repositories/obstacle_repository.dart';
+import '../../features/community/domain/usecases/delete_obstacle.dart';
 import '../../features/community/domain/usecases/get_obstacles.dart';
 import '../../features/community/domain/usecases/report_obstacle.dart';
 import '../../features/community/presentation/bloc/obstacle_bloc.dart';
@@ -64,7 +65,11 @@ Future<void> init() async {
     () => ProfileEmergencyBloc(validateEmergencyContactUseCase: sl()),
   );
   sl.registerFactory(
-    () => ObstacleBloc(getObstaclesUseCase: sl(), reportObstacleUseCase: sl()),
+    () => ObstacleBloc(
+      getObstaclesUseCase: sl(),
+      reportObstacleUseCase: sl(),
+      deleteObstacleUseCase: sl(),
+    ),
   );
   sl.registerFactory(() => AddPlaceBloc(addPlaceUseCase: sl()));
   sl.registerFactory(() => CommunityBloc());
@@ -84,6 +89,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => ValidateEmergencyContactUseCase());
   sl.registerLazySingleton(() => GetObstaclesUseCase(sl()));
   sl.registerLazySingleton(() => ReportObstacleUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteObstacleUseCase(sl()));
   sl.registerLazySingleton(() => CalculateAccessibleRouteUseCase(sl(), sl()));
   sl.registerLazySingleton(
     () =>

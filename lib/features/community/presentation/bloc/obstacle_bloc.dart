@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:developer' as developer;
 
 import '../../domain/entities/obstacle.dart';
+import '../../domain/usecases/delete_obstacle.dart';
 import '../../domain/usecases/get_obstacles.dart';
 import '../../domain/usecases/report_obstacle.dart';
 
@@ -34,18 +35,31 @@ class ReportNewObstacleEvent extends ObstacleEvent {
   List<Object?> get props => [type, location, description, severity];
 }
 
+class DeleteObstacleEvent extends ObstacleEvent {
+  final String obstacleId;
+
+  DeleteObstacleEvent({required this.obstacleId});
+
+  @override
+  List<Object?> get props => [obstacleId];
+}
+
 // --- STATE ---
 class ObstacleState extends Equatable {
   final List<Obstacle> obstacles;
   final bool isLoading;
   final String? errorMessage;
   final bool isReportedSuccess;
+  final bool isDeleting;
+  final bool isDeleteSuccess;
 
   const ObstacleState({
     required this.obstacles,
     this.isLoading = false,
     this.errorMessage,
     this.isReportedSuccess = false,
+    this.isDeleting = false,
+    this.isDeleteSuccess = false,
   });
 
   ObstacleState copyWith({
@@ -53,12 +67,16 @@ class ObstacleState extends Equatable {
     bool? isLoading,
     String? errorMessage,
     bool? isReportedSuccess,
+    bool? isDeleting,
+    bool? isDeleteSuccess,
   }) {
     return ObstacleState(
       obstacles: obstacles ?? this.obstacles,
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage,
       isReportedSuccess: isReportedSuccess ?? this.isReportedSuccess,
+      isDeleting: isDeleting ?? this.isDeleting,
+      isDeleteSuccess: isDeleteSuccess ?? this.isDeleteSuccess,
     );
   }
 
@@ -68,6 +86,8 @@ class ObstacleState extends Equatable {
     isLoading,
     errorMessage,
     isReportedSuccess,
+    isDeleting,
+    isDeleteSuccess,
   ];
 }
 
@@ -75,15 +95,19 @@ class ObstacleState extends Equatable {
 class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
   final GetObstaclesUseCase _getObstaclesUseCase;
   final ReportObstacleUseCase _reportObstacleUseCase;
+  final DeleteObstacleUseCase _deleteObstacleUseCase;
 
   ObstacleBloc({
     required GetObstaclesUseCase getObstaclesUseCase,
     required ReportObstacleUseCase reportObstacleUseCase,
+    required DeleteObstacleUseCase deleteObstacleUseCase,
   }) : _getObstaclesUseCase = getObstaclesUseCase,
        _reportObstacleUseCase = reportObstacleUseCase,
+       _deleteObstacleUseCase = deleteObstacleUseCase,
        super(const ObstacleState(obstacles: [])) {
     on<LoadObstaclesEvent>(_onLoadObstacles);
     on<ReportNewObstacleEvent>(_onReportNewObstacle);
+    on<DeleteObstacleEvent>(_onDeleteObstacle);
 
     // Carrega a lista inicial de obstáculos
     add(LoadObstaclesEvent());
@@ -188,6 +212,77 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
             developer.log(
               'Refetch com sucesso. ${obstacles.length} obstáculos encontrados.',
               name: 'DebugInsercao',
+            );
+            emit(state.copyWith(obstacles: obstacles));
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _onDeleteObstacle(
+    DeleteObstacleEvent event,
+    Emitter<ObstacleState> emit,
+  ) async {
+    developer.log(
+      'Iniciando exclusão do Obstáculo ID: ${event.obstacleId}',
+      name: 'ObstacleBloc',
+    );
+
+    // Otimista: remove da lista local imediatamente
+    final optimisticList = state.obstacles
+        .where((o) => o.id != event.obstacleId)
+        .toList();
+
+    emit(
+      state.copyWith(
+        isDeleting: true,
+        isDeleteSuccess: false,
+        errorMessage: null,
+        obstacles: optimisticList,
+      ),
+    );
+
+    final result = await _deleteObstacleUseCase(event.obstacleId);
+
+    await result.fold(
+      (failure) async {
+        developer.log(
+          'Falha ao excluir obstáculo: ${failure.message}',
+          name: 'ObstacleBloc',
+        );
+        // Reverte: recarrega a lista do servidor
+        final reloadResult = await _getObstaclesUseCase();
+        reloadResult.fold(
+          (_) {},
+          (obstacles) => emit(state.copyWith(obstacles: obstacles)),
+        );
+        emit(
+          state.copyWith(
+            isDeleting: false,
+            errorMessage: failure.message,
+          ),
+        );
+      },
+      (_) async {
+        developer.log(
+          'Obstáculo excluído com sucesso! ID: ${event.obstacleId}',
+          name: 'ObstacleBloc',
+        );
+        emit(state.copyWith(isDeleting: false, isDeleteSuccess: true));
+        // Refetch silencioso para garantir consistência
+        final reloadResult = await _getObstaclesUseCase();
+        reloadResult.fold(
+          (failure) {
+            developer.log(
+              'Refetch após delete falhou: ${failure.message}',
+              name: 'ObstacleBloc',
+            );
+          },
+          (obstacles) {
+            developer.log(
+              'Refetch pós-delete: ${obstacles.length} obstáculos ativos.',
+              name: 'ObstacleBloc',
             );
             emit(state.copyWith(obstacles: obstacles));
           },

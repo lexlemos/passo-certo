@@ -269,7 +269,10 @@ class _RouteMapSectionState extends State<RouteMapSection> {
 
 
 
-        final obstacleMarkers = ObstacleMarkersLayer.buildMarkers(obstacles);
+        final obstacleMarkers = ObstacleMarkersLayer.buildMarkers(
+          obstacles,
+          onTap: (obstacle) => _showDeleteObstacleDialog(context, obstacle),
+        );
         final placeMarkers = PlaceMarkersLayer.buildMarkers(addedPlaces);
 
         final List<Marker> dynamicMarkers = [];
@@ -437,6 +440,74 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           ],
         );
     }
+  }
+
+  /// Exibe um diálogo de confirmação para apagar (soft-delete) um obstáculo.
+  void _showDeleteObstacleDialog(BuildContext context, Obstacle obstacle) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_outline, color: Color(0xFFD32F2F), size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Remover Obstáculo?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                obstacle.description.isNotEmpty
+                    ? obstacle.description
+                    : 'Obstáculo sem descrição.',
+                style: const TextStyle(fontSize: 14, color: Color(0xFF4A5568)),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Este obstáculo será marcado como resolvido e sumirá do mapa.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF718096)),
+              ),
+            ],
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Color(0xFF718096)),
+              ),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD32F2F),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Remover'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.read<ObstacleBloc>().add(
+                  DeleteObstacleEvent(obstacleId: obstacle.id),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
