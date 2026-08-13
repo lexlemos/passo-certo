@@ -58,19 +58,9 @@ class NavBar extends StatelessWidget {
           ),
           BottomNavigationBarItem(
             icon: Semantics(
-              label: 'Aba Comunidade',
-              hint: 'Toque duas vezes para navegar para a comunidade',
-              selected: currentIndex == 2,
-              button: true,
-              child: const Icon(Icons.people),
-            ),
-            label: 'Comunidade',
-          ),
-          BottomNavigationBarItem(
-            icon: Semantics(
               label: 'Aba Perfil',
               hint: 'Toque duas vezes para acessar suas informações de perfil',
-              selected: currentIndex == 3,
+              selected: currentIndex == 2,
               button: true,
               child: const Icon(Icons.person),
             ),

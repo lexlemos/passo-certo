@@ -19,4 +19,7 @@ abstract class PlaceRepository {
 
   /// Adiciona um novo local da UFS e atualiza o cache.
   Future<Either<Failure, Place>> addPlace(Place place);
+
+  /// Remove um local pelo seu ID do banco e invalida o cache.
+  Future<Either<Failure, void>> deletePlace(String placeId);
 }

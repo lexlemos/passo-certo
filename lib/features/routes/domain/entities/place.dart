@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
 
 class Place extends Equatable {
+  /// ID único do banco (UUID). Pode ser nulo para locais criados localmente
+  /// antes de serem persistidos no Supabase.
+  final String? id;
   final String name;
   final double latitude;
   final double longitude;
@@ -10,6 +13,7 @@ class Place extends Equatable {
   final bool isAccessible;
 
   const Place({
+    this.id,
     required this.name,
     required this.latitude,
     required this.longitude,
@@ -20,6 +24,7 @@ class Place extends Equatable {
   });
 
   Place copyWith({
+    String? id,
     String? name,
     double? latitude,
     double? longitude,
@@ -29,6 +34,7 @@ class Place extends Equatable {
     bool? isAccessible,
   }) {
     return Place(
+      id: id ?? this.id,
       name: name ?? this.name,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
@@ -41,6 +47,7 @@ class Place extends Equatable {
 
   @override
   List<Object?> get props => [
+    id,
     name,
     latitude,
     longitude,

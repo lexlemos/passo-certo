@@ -7,12 +7,12 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../community/domain/entities/obstacle.dart';
 import '../../../community/presentation/bloc/obstacle_bloc.dart';
+import '../../domain/entities/place.dart';
+import '../bloc/add_place_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/config/app_constants.dart';
 import '../bloc/route_planning_bloc.dart';
 import '../bloc/active_navigation_bloc.dart';
-import '../bloc/add_place_bloc.dart';
-import '../../domain/entities/place.dart';
 import '../../../community/presentation/widgets/report_obstacle_bottom_sheet.dart';
 import 'add_place_bottom_sheet.dart';
 import 'map_layers/place_markers_layer.dart';
@@ -271,9 +271,12 @@ class _RouteMapSectionState extends State<RouteMapSection> {
 
         final obstacleMarkers = ObstacleMarkersLayer.buildMarkers(
           obstacles,
-          onTap: (obstacle) => _showDeleteObstacleDialog(context, obstacle),
+          onTap: (obstacle) => _showObstacleDetailsSheet(context, obstacle),
         );
-        final placeMarkers = PlaceMarkersLayer.buildMarkers(addedPlaces);
+        final placeMarkers = PlaceMarkersLayer.buildMarkers(
+          addedPlaces,
+          onTap: (place) => _showDeletePlaceDialog(context, place),
+        );
 
         final List<Marker> dynamicMarkers = [];
         if (state.originLat != null && state.originLng != null) {
@@ -442,71 +445,289 @@ class _RouteMapSectionState extends State<RouteMapSection> {
     }
   }
 
-  /// Exibe um diálogo de confirmação para apagar (soft-delete) um obstáculo.
-  void _showDeleteObstacleDialog(BuildContext context, Obstacle obstacle) {
-    showDialog<void>(
+  /// Bottom sheet com detalhes completos do obstáculo.
+  void _showObstacleDetailsSheet(BuildContext context, Obstacle obstacle) {
+    final isBlocking = obstacle.severity == ObstacleSeverity.blocking;
+
+    // Labels legíveis por tipo
+    final typeLabels = {
+      ObstacleType.pothole: 'Buraco no piso',
+      ObstacleType.noTactilePaving: 'Sem piso tátil',
+      ObstacleType.stairs: 'Escada',
+      ObstacleType.blockedSidewalk: 'Calçada bloqueada',
+      ObstacleType.other: 'Outro',
+    };
+    final typeLabel = typeLabels[obstacle.type] ?? 'Desconhecido';
+    final severityColor =
+        isBlocking ? const Color(0xFFD32F2F) : const Color(0xFFFBC02D);
+    final severityLabel = isBlocking ? 'Bloqueio' : 'Aviso';
+    final severityIcon = isBlocking ? Icons.block : Icons.priority_high;
+
+    // Formata a data de reporte
+    final dt = obstacle.reportedAt.toLocal();
+    final dateStr =
+        '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+    showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.delete_outline, color: Color(0xFFD32F2F), size: 22),
-              SizedBox(width: 8),
-              Text(
-                'Remover Obstáculo?',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                obstacle.description.isNotEmpty
-                    ? obstacle.description
-                    : 'Obstáculo sem descrição.',
-                style: const TextStyle(fontSize: 14, color: Color(0xFF4A5568)),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Este obstáculo será marcado como resolvido e sumirá do mapa.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF718096)),
-              ),
-            ],
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: Color(0xFF718096)),
-              ),
-            ),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Puxador
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.check, size: 16),
-              label: const Text('Remover'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.read<ObstacleBloc>().add(
-                  DeleteObstacleEvent(obstacleId: obstacle.id),
-                );
-              },
+                const SizedBox(height: 16),
+
+                // Tipo + severidade
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: severityColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(severityIcon, color: isBlocking ? Colors.white : Colors.black, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            severityLabel,
+                            style: TextStyle(
+                              color: isBlocking ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        typeLabel,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A202C),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Descrição
+                const Text(
+                  'Descrição',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF718096),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  obstacle.description.isNotEmpty
+                      ? obstacle.description
+                      : 'Sem descrição informada.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF2D3748),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Data
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: Color(0xFFA0AEC0),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Reportado em $dateStr',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFA0AEC0),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Botão remover
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD32F2F),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text(
+                      'Remover Obstáculo',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    onPressed: () {
+                      Navigator.of(sheetCtx).pop();
+                      _confirmDeleteObstacle(context, obstacle);
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
+    );
+  }
+
+  /// Diálogo de confirmação para remover um obstáculo.
+  void _confirmDeleteObstacle(BuildContext context, Obstacle obstacle) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Confirmar remoção?',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text(
+          'Este obstáculo será marcado como resolvido e sumirá do mapa.',
+          style: TextStyle(fontSize: 13, color: Color(0xFF718096)),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: Color(0xFF718096))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<ObstacleBloc>().add(
+                DeleteObstacleEvent(obstacleId: obstacle.id),
+              );
+            },
+            child: const Text('Remover'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Diálogo de confirmação para apagar um local.
+  void _showDeletePlaceDialog(BuildContext context, Place place) {
+    if (place.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Este local ainda não foi sincronizado com o servidor.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline, color: Color(0xFFD32F2F), size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Remover "${place.name}"?',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (place.category.isNotEmpty)
+              Text(
+                'Categoria: ${place.category}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF4A5568)),
+              ),
+            const SizedBox(height: 8),
+            const Text(
+              'Este local será apagado permanentemente do mapa.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF718096)),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: Color(0xFF718096))),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.check, size: 16),
+            label: const Text('Remover'),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AddPlaceBloc>().add(
+                DeletePlaceEvent(placeId: place.id!),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

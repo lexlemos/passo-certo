@@ -12,6 +12,7 @@ import '../../features/routes/domain/usecases/calculate_accessible_route.dart';
 import '../../features/routes/domain/usecases/get_recent_searches.dart';
 import '../../features/routes/domain/usecases/save_recent_search.dart';
 import '../../features/routes/domain/usecases/add_place.dart';
+import '../../features/routes/domain/usecases/delete_place.dart';
 import '../../features/profile/domain/usecases/validate_emergency_contact.dart';
 import '../../features/profile/presentation/bloc/profile_navigation_bloc.dart';
 import '../../features/profile/presentation/bloc/profile_emergency_bloc.dart';
@@ -71,7 +72,12 @@ Future<void> init() async {
       deleteObstacleUseCase: sl(),
     ),
   );
-  sl.registerFactory(() => AddPlaceBloc(addPlaceUseCase: sl()));
+  sl.registerFactory(
+    () => AddPlaceBloc(
+      addPlaceUseCase: sl(),
+      deletePlaceUseCase: sl(),
+    ),
+  );
   sl.registerFactory(() => CommunityBloc());
   sl.registerFactory(
     () => ActiveNavigationBloc(
@@ -97,6 +103,7 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(() => GetCurrentLocationPlaceUseCase(sl(), sl()));
   sl.registerLazySingleton(() => AddPlaceUseCase(sl()));
+  sl.registerLazySingleton(() => DeletePlaceUseCase(sl()));
   sl.registerLazySingleton(() => GetRecentSearchesUseCase(sl()));
   sl.registerLazySingleton(() => SaveRecentSearchUseCase(sl()));
 

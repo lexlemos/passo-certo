@@ -9,6 +9,7 @@ import '../../domain/entities/place.dart';
 /// (SRP): a entidade carrega regras de negócio; o modelo, o contrato de I/O.
 class PlaceModel extends Place {
   const PlaceModel({
+    super.id,
     required super.name,
     required super.latitude,
     required super.longitude,
@@ -38,6 +39,7 @@ class PlaceModel extends Place {
   /// iteração interna nativa do SDK do Dart, sem alocações intermediárias.
   factory PlaceModel.fromJson(Map<String, dynamic> json) {
     return PlaceModel(
+      id: json['id'] as String?,
       name: json['name'] as String? ?? '',
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),

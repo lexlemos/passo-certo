@@ -180,5 +180,38 @@ class SupabasePlaceRepositoryImpl implements PlaceRepository {
       return Left(ServerFailure('Erro inesperado ao adicionar local: $e'));
     }
   }
-}
 
+  @override
+  Future<Either<Failure, void>> deletePlace(String placeId) async {
+    developer.log(
+      'Iniciando exclusão do Local. ID: $placeId',
+      name: 'SupabasePlaceRepositoryImpl',
+    );
+    try {
+      await supabaseClient.from('places').delete().eq('id', placeId);
+
+      // Invalida cache para forçar refetch na próxima consulta
+      invalidateCache();
+
+      developer.log(
+        'Local excluído com sucesso! ID: $placeId',
+        name: 'SupabasePlaceRepositoryImpl',
+      );
+      return const Right(null);
+    } on PostgrestException catch (e) {
+      developer.log(
+        'PostgrestException ao excluir local: ${e.message}',
+        error: e,
+        name: 'SupabasePlaceRepositoryImpl',
+      );
+      return Left(ServerFailure('Falha ao excluir local: ${e.message}'));
+    } catch (e) {
+      developer.log(
+        'Erro inesperado ao excluir local: $e',
+        error: e,
+        name: 'SupabasePlaceRepositoryImpl',
+      );
+      return Left(ServerFailure('Erro inesperado ao excluir local: $e'));
+    }
+  }
+}
