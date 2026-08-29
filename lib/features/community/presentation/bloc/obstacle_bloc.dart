@@ -193,29 +193,14 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
           ),
         );
       },
-      (_) async {
+      (_) {
+        // O cache local já foi atualizado via write-through no repositório.
+        // A UI otimista já reflete o novo obstáculo — nenhum refetch necessário.
         developer.log(
-          'Sucesso retornado pelo UseCase!',
+          'Sucesso retornado pelo UseCase! Cache já atualizado via write-through.',
           name: 'DebugInsercao',
         );
         emit(state.copyWith(isLoading: false, isReportedSuccess: true));
-        // Refetch silencioso
-        final reloadResult = await _getObstaclesUseCase();
-        reloadResult.fold(
-          (failure) {
-            developer.log(
-              'Refetch falhou silenciosamente: ${failure.message}',
-              name: 'DebugInsercao',
-            );
-          },
-          (obstacles) {
-            developer.log(
-              'Refetch com sucesso. ${obstacles.length} obstáculos encontrados.',
-              name: 'DebugInsercao',
-            );
-            emit(state.copyWith(obstacles: obstacles));
-          },
-        );
       },
     );
   }
@@ -264,29 +249,15 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
           ),
         );
       },
-      (_) async {
+      (_) {
+        // O item já foi removido do cache local via write-through no repositório.
+        // A UI otimista já reflete a remoção — nenhum refetch necessário.
         developer.log(
-          'Obstáculo excluído com sucesso! ID: ${event.obstacleId}',
+          'Obstáculo excluído com sucesso! ID: ${event.obstacleId}. '
+          'Cache já atualizado via write-through.',
           name: 'ObstacleBloc',
         );
         emit(state.copyWith(isDeleting: false, isDeleteSuccess: true));
-        // Refetch silencioso para garantir consistência
-        final reloadResult = await _getObstaclesUseCase();
-        reloadResult.fold(
-          (failure) {
-            developer.log(
-              'Refetch após delete falhou: ${failure.message}',
-              name: 'ObstacleBloc',
-            );
-          },
-          (obstacles) {
-            developer.log(
-              'Refetch pós-delete: ${obstacles.length} obstáculos ativos.',
-              name: 'ObstacleBloc',
-            );
-            emit(state.copyWith(obstacles: obstacles));
-          },
-        );
       },
     );
   }

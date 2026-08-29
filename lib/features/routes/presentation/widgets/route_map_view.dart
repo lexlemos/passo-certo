@@ -331,7 +331,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                         ),
                   initialZoom: 15.0,
                   minZoom: 3.0,
-                  maxZoom: 18.0,
+                  maxZoom: AppConstants.mapMaxZoom,
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.all,
                   ),
@@ -374,6 +374,12 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                     urlTemplate:
                         'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.passo_certo',
+                    // Tile Scaling: servidor CartoCDN serve até zoom 19 (maxNativeZoom).
+                    // Para zooms acima, o flutter_map estica digitalmente o tile do
+                    // nível 19 até mapMaxZoom da câmera — sem requisições inválidas
+                    // e sem telas cinzas. Ideal para navegação interna pedestre.
+                    maxNativeZoom: AppConstants.mapMaxNativeZoom,
+                    maxZoom: AppConstants.mapMaxZoom,
                     keepBuffer: 2,
                     panBuffer: 1,
                     evictErrorTileStrategy: EvictErrorTileStrategy.dispose,

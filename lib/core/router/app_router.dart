@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/presentation/pages/auth_wrapper.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/routes/presentation/pages/route_planning_page.dart';
 import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
@@ -15,10 +18,43 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
 );
 
+/// Configuração declarativa de rotas do aplicativo.
+///
+/// ## Hierarquia de rotas
+///
+/// ```
+/// /                 → AuthWrapper (splash + portão de auth)
+/// /login            → LoginPage
+/// /signup           → (futura tela de cadastro)
+/// /home             → HomePage       ┐
+/// /routes           → RoutePlanningPage ├ dentro do StatefulShellRoute
+/// /profile          → ProfilePage    ┘
+/// ```
+///
+/// O redirecionamento pós-auth é feito pelo próprio [AuthWrapper] via
+/// `context.go()`, mantendo o GoRouter como fonte de verdade da navegação.
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/home',
+  initialLocation: '/',
   routes: [
+    // ── Splash / Auth Gate ─────────────────────────────────────────────────
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const AuthWrapper(),
+    ),
+
+    // ── Autenticação ───────────────────────────────────────────────────────
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginPage(),
+    ),
+
+    GoRoute(
+      path: '/signup',
+      builder: (context, state) => const SignUpPage(),
+    ),
+
+    // ── App Principal (com BottomNavigationBar) ────────────────────────────
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return MainNavigationShell(navigationShell: navigationShell);
