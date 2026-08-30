@@ -1,5 +1,6 @@
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/either.dart';
+import '../entities/user.dart';
 
 /// Contrato do repositório de autenticação.
 ///
@@ -40,4 +41,10 @@ abstract class AuthRepository {
   /// Esta operação é **síncrona** — lê o estado em memória do cliente
   /// Supabase, sem round-trip de rede.
   String? getCurrentUserId();
+
+  /// Busca a entidade de usuário completa baseando-se no ID atual.
+  Future<User?> getCurrentUser();
+
+  /// Atualiza os dados de perfil do usuário.
+  Future<Either<Failure, void>> updateProfile(User user);
 }

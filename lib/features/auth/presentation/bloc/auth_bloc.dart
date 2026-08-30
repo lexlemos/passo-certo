@@ -3,10 +3,12 @@ import 'dart:developer' as developer;
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/usecases/get_current_user_id.dart';
+import '../../domain/entities/user.dart';
+import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/sign_in.dart';
 import '../../domain/usecases/sign_out.dart';
 import '../../domain/usecases/sign_up.dart';
+import '../../domain/usecases/update_profile.dart';
 
 // ─── Events ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,16 @@ class AuthSignUpRequested extends AuthEvent {
 /// Solicita encerramento da sessão atual.
 class AuthLogoutRequested extends AuthEvent {}
 
+/// Solicita atualização do perfil do usuário.
+class AuthUpdateProfileRequested extends AuthEvent {
+  final User user;
+
+  const AuthUpdateProfileRequested(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
+
 // ─── States ───────────────────────────────────────────────────────────────────
 
 /// Estado inicial — antes de qualquer verificação de sessão.
@@ -73,13 +85,13 @@ class AuthLoading extends AuthState {}
 
 /// Usuário autenticado com sessão ativa.
 class Authenticated extends AuthState {
-  /// ID único (UUID) do usuário autenticado no Supabase.
-  final String userId;
+  /// Entidade completa do usuário autenticado no Supabase.
+  final User user;
 
-  const Authenticated(this.userId);
+  const Authenticated(this.user);
 
   @override
-  List<Object?> get props => [userId];
+  List<Object?> get props => [user];
 }
 
 /// Nenhuma sessão ativa — usuário deve fazer login ou cadastro.
@@ -138,27 +150,31 @@ abstract class AuthState extends Equatable {
 ///   └─ AuthLogoutRequested ─► AuthLoading → Unauthenticated | AuthError
 /// ```
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final GetCurrentUserIdUseCase _getCurrentUserIdUseCase;
+  final GetCurrentUserUseCase _getCurrentUserUseCase;
   final SignInUseCase _signInUseCase;
   final SignUpUseCase _signUpUseCase;
   final SignOutUseCase _signOutUseCase;
+  final UpdateProfileUseCase _updateProfileUseCase;
 
   static const String _logName = 'AuthBloc';
 
   AuthBloc({
-    required GetCurrentUserIdUseCase getCurrentUserIdUseCase,
+    required GetCurrentUserUseCase getCurrentUserUseCase,
     required SignInUseCase signInUseCase,
     required SignUpUseCase signUpUseCase,
     required SignOutUseCase signOutUseCase,
-  }) : _getCurrentUserIdUseCase = getCurrentUserIdUseCase,
+    required UpdateProfileUseCase updateProfileUseCase,
+  }) : _getCurrentUserUseCase = getCurrentUserUseCase,
        _signInUseCase = signInUseCase,
        _signUpUseCase = signUpUseCase,
        _signOutUseCase = signOutUseCase,
+       _updateProfileUseCase = updateProfileUseCase,
        super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthSignUpRequested>(_onAuthSignUpRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
+    on<AuthUpdateProfileRequested>(_onAuthUpdateProfileRequested);
   }
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -166,15 +182,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Verifica se há uma sessão ativa ao abrir o app.
   ///
   /// Operação síncrona — sem loading state, para evitar flash de tela.
-  void _onAuthCheckRequested(
+  Future<void> _onAuthCheckRequested(
     AuthCheckRequested event,
     Emitter<AuthState> emit,
-  ) {
+  ) async {
     developer.log('Verificando sessão ativa...', name: _logName);
-    final userId = _getCurrentUserIdUseCase();
-    if (userId != null) {
-      developer.log('Sessão encontrada. userId: $userId', name: _logName);
-      emit(Authenticated(userId));
+    final user = await _getCurrentUserUseCase();
+    if (user != null) {
+      developer.log('Sessão encontrada. userId: ${user.id}', name: _logName);
+      emit(Authenticated(user));
     } else {
       developer.log('Nenhuma sessão ativa.', name: _logName);
       emit(Unauthenticated());
@@ -194,17 +210,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       password: event.password,
     );
 
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         developer.log(
           'Login falhou: ${failure.message}',
           name: _logName,
         );
         emit(AuthError(failure.message));
       },
-      (userId) {
+      (userId) async {
         developer.log('Login bem-sucedido. userId: $userId', name: _logName);
-        emit(Authenticated(userId));
+        final user = await _getCurrentUserUseCase();
+        if (user != null) {
+          emit(Authenticated(user));
+        } else {
+          emit(const AuthError('Erro ao buscar dados do usuário.'));
+        }
       },
     );
   }
@@ -227,24 +248,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       reducedMobility: event.reducedMobility,
     );
 
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         developer.log(
           'Cadastro falhou: ${failure.message}',
           name: _logName,
         );
-        // AuthFailure com mensagem de confirmação de e-mail não é um erro
-        // real — mas a camada de domínio a retorna como Left para sinalizar
-        // que a sessão ainda não está ativa. O BLoC a repassa como AuthError
-        // para que a UI exiba a mensagem ao usuário.
         emit(AuthError(failure.message));
       },
-      (userId) {
+      (userId) async {
         developer.log(
           'Cadastro bem-sucedido. userId: $userId',
           name: _logName,
         );
-        emit(Authenticated(userId));
+        // Espera um tempinho pro banco (trigger) terminar de inserir o public.users se precisar.
+        await Future.delayed(const Duration(milliseconds: 500));
+        final user = await _getCurrentUserUseCase();
+        if (user != null) {
+          emit(Authenticated(user));
+        } else {
+          emit(const AuthError('Erro ao buscar dados do usuário recém-criado.'));
+        }
       },
     );
   }
@@ -267,6 +291,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       (_) {
         developer.log('Logout bem-sucedido.', name: _logName);
         emit(Unauthenticated());
+      },
+    );
+  }
+
+  /// Processa a atualização de perfil.
+  Future<void> _onAuthUpdateProfileRequested(
+    AuthUpdateProfileRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    developer.log('Update de perfil solicitado para: ${event.user.id}', name: _logName);
+    // Guarda o estado anterior de sucesso (Authenticated) para fallback
+    final currentState = state;
+    if (currentState is! Authenticated) return;
+
+    emit(AuthLoading());
+
+    final result = await _updateProfileUseCase(event.user);
+    
+    result.fold(
+      (failure) {
+        developer.log('Update falhou: ${failure.message}', name: _logName);
+        emit(AuthError(failure.message));
+        // Devolve pro Authenticated pra tela voltar a funcionar se foi via dialog
+        emit(currentState);
+      },
+      (_) {
+        developer.log('Update bem-sucedido.', name: _logName);
+        emit(Authenticated(event.user));
       },
     );
   }

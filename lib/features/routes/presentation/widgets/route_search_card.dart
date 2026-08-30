@@ -399,43 +399,60 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                 // ============================================================
                 if (hasRoutes && !_isViewingRoute) ...[
                   // Pílula de destino (fica visível apenas neste modo)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.softGreyBg,
+                  Semantics(
+                    button: true,
+                    label: 'Voltar para busca e editar destino',
+                    child: InkWell(
+                      onTap: () {
+                        context.read<RoutePlanningBloc>().add(
+                          ClearCalculatedRoutesEvent(),
+                        );
+                      },
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: AppTheme.mintGreen.withValues(alpha: 0.40),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.place_rounded,
-                            color: AppTheme.mintGreen,
-                            size: 20,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.softGreyBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppTheme.mintGreen.withValues(alpha: 0.40),
+                            width: 1.2,
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              planningState.destinationText.isNotEmpty
-                                  ? planningState.destinationText
-                                  : 'Local Selecionado',
-                              style: const TextStyle(
-                                color: AppTheme.spaceBlue,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.place_rounded,
+                                color: AppTheme.mintGreen,
+                                size: 20,
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  planningState.destinationText.isNotEmpty
+                                      ? planningState.destinationText
+                                      : 'Local Selecionado',
+                                  style: const TextStyle(
+                                    color: AppTheme.spaceBlue,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.edit,
+                                color: AppTheme.spaceBlue,
+                                size: 18,
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),

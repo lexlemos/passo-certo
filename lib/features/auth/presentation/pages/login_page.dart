@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/colors/auth_colors.dart';
+import '../../../../core/di/injection_container.dart' as di;
 import '../bloc/auth_bloc.dart';
 
 /// Tela de login com integração ao [AuthBloc].
@@ -28,9 +32,28 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    final prefs = di.sl<SharedPreferences>();
+    final savedEmail = prefs.getString('saved_email');
+    if (savedEmail != null && savedEmail.isNotEmpty) {
+      _emailController.text = savedEmail;
+    }
+
+    _emailController.addListener(() {
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        prefs.setString('saved_email', _emailController.text.trim());
+      });
+    });
+  }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -57,6 +80,7 @@ class _LoginPageState extends State<LoginPage> {
         }
         // ── Erro: exibe SnackBar com mensagem amigável ─────────────────────
         if (state is AuthError) {
+          _passwordController.clear();
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(

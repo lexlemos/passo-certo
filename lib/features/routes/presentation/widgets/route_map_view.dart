@@ -137,18 +137,51 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           },
         ),
         BlocListener<RoutePlanningBloc, RoutePlanningState>(
-          listenWhen: (prev, curr) =>
-              (prev.originLat != curr.originLat ||
-                  prev.originLng != curr.originLng) &&
-              curr.originLat != null &&
-              curr.originLng != null,
+          listenWhen: (prev, curr) {
+            final originChanged = (prev.originLat != curr.originLat ||
+                    prev.originLng != curr.originLng) &&
+                curr.originLat != null &&
+                curr.originLng != null;
+            final isResetSearch =
+                prev.routes.isNotEmpty && curr.routes.isEmpty && curr.destLat == null;
+            final destinationSelected = prev.destLat == null && curr.destLat != null;
+            final routesCalculated = prev.routes.isEmpty && curr.routes.isNotEmpty;
+            return originChanged || isResetSearch || destinationSelected || routesCalculated;
+          },
           listener: (context, planningState) {
-            if (!_hasCenteredOnUser) {
-              _hasCenteredOnUser = true;
+            final isResetSearch = planningState.routes.isEmpty && planningState.destLat == null;
+            final destinationSelected = planningState.destLat != null && planningState.routes.isEmpty;
+            final routesCalculated = planningState.routes.isNotEmpty;
+            
+            if (routesCalculated) {
+              if (planningState.originLat != null && planningState.destLat != null) {
+                try {
+                  final bounds = LatLngBounds(
+                    LatLng(planningState.originLat!, planningState.originLng!),
+                    LatLng(planningState.destLat!, planningState.destLng!),
+                  );
+                  _mapController.fitCamera(CameraFit.bounds(
+                    bounds: bounds,
+                    padding: const EdgeInsets.all(40.0),
+                  ));
+                } catch (_) {}
+              }
+            } else if (destinationSelected) {
               _safeMoveMap(
                 _mapController,
-                LatLng(planningState.originLat!, planningState.originLng!),
+                LatLng(planningState.destLat!, planningState.destLng!),
+                16.0,
               );
+            } else if (!_hasCenteredOnUser || isResetSearch) {
+              _hasCenteredOnUser = true;
+              if (planningState.originLat != null &&
+                  planningState.originLng != null) {
+                _safeMoveMap(
+                  _mapController,
+                  LatLng(planningState.originLat!, planningState.originLng!),
+                  isResetSearch ? 16.0 : null,
+                );
+              }
             }
           },
         ),
@@ -371,8 +404,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate:
-                        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.passo_certo',
                     // Tile Scaling: servidor CartoCDN serve até zoom 19 (maxNativeZoom).
                     // Para zooms acima, o flutter_map estica digitalmente o tile do

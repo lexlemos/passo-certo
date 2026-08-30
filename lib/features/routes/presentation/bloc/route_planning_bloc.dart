@@ -75,6 +75,8 @@ class ClearDestinationEvent extends RoutePlanningEvent {}
 
 class ClearRouteSearchEvent extends RoutePlanningEvent {}
 
+class ClearCalculatedRoutesEvent extends RoutePlanningEvent {}
+
 // --- STATE ---
 class RoutePlanningState extends Equatable {
   final String originText;
@@ -209,6 +211,7 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
     on<ClearOriginEvent>(_onClearOrigin);
     on<ClearDestinationEvent>(_onClearDestination);
     on<ClearRouteSearchEvent>(_onClearRouteSearch);
+    on<ClearCalculatedRoutesEvent>(_onClearCalculatedRoutes);
 
     // Dispara o carregamento inicial buscando dados do repositório via UseCase
     add(LoadRoutesEvent());
@@ -494,12 +497,28 @@ class RoutePlanningBloc extends Bloc<RoutePlanningEvent, RoutePlanningState> {
     Emitter<RoutePlanningState> emit,
   ) {
     emit(
+      RoutePlanningState(
+        originText: state.originText,
+        originLat: state.originLat,
+        originLng: state.originLng,
+        destinationText: '',
+        selectedFilter: state.selectedFilter,
+        routes: const [],
+        selectedRouteIndex: 0,
+        recentSearches: state.recentSearches,
+      ),
+    );
+  }
+
+  void _onClearCalculatedRoutes(
+    ClearCalculatedRoutesEvent event,
+    Emitter<RoutePlanningState> emit,
+  ) {
+    emit(
       state.copyWith(
         routes: const [],
         recommendedRoute: null,
         selectedRouteIndex: 0,
-        isLoading: false,
-        errorMessage: () => null,
       ),
     );
   }

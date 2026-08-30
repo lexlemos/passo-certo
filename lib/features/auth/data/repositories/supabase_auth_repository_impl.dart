@@ -1,11 +1,13 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/either.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/entities/user.dart';
+import '../models/user_model.dart';
 
 /// Implementação de [AuthRepository] usando o SDK do Supabase.
 ///
@@ -101,8 +103,8 @@ class SupabaseAuthRepositoryImpl implements AuthRepository {
           if (phone != null && phone.isNotEmpty) 'phone': phone,
           if (emergencyPhone != null && emergencyPhone.isNotEmpty)
             'emergencyPhone': emergencyPhone,
-          'isBlind': isBlind,
-          'reducedMobility': reducedMobility,
+          'isBlind': isBlind ? true : false,
+          'reducedMobility': reducedMobility ? true : false,
         },
       );
 
@@ -178,6 +180,57 @@ class SupabaseAuthRepositoryImpl implements AuthRepository {
       name: _logName,
     );
     return userId;
+  }
+
+  // ─── getCurrentUser ───────────────────────────────────────────────────────
+
+  @override
+  Future<UserModel?> getCurrentUser() async {
+    final userId = getCurrentUserId();
+    if (userId == null) return null;
+
+    try {
+      final response = await supabaseClient
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response == null) return null;
+
+      return UserModel.fromJson(response);
+    } catch (e) {
+      developer.log(
+        'Erro ao buscar usuário atual: $e',
+        error: e,
+        name: _logName,
+      );
+      return null;
+    }
+  }
+
+  // ─── updateProfile ────────────────────────────────────────────────────────
+
+  @override
+  Future<Either<Failure, void>> updateProfile(User user) async {
+    try {
+      await supabaseClient.from('users').update({
+        'name': user.name,
+        'phone': user.phone,
+        'emergency_phone': user.emergencyPhone,
+        'is_blind': user.isBlind,
+        'reduced_mobility': user.reducedMobility,
+      }).eq('id', user.id);
+
+      return const Right(null);
+    } catch (e) {
+      developer.log(
+        'Erro ao atualizar perfil: $e',
+        error: e,
+        name: _logName,
+      );
+      return Left(AuthFailure('Erro ao atualizar perfil: $e'));
+    }
   }
 
   // ─── Helpers privados ─────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
 import '../../features/routes/presentation/bloc/active_navigation_bloc.dart';
 import '../../features/routes/presentation/bloc/add_place_bloc.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../widgets/main_navigation_shell.dart';
 import '../di/injection_container.dart' as di;
 
@@ -52,6 +53,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/signup',
       builder: (context, state) => const SignUpPage(),
+    ),
+
+    GoRoute(
+      path: '/edit-profile',
+      builder: (context, state) => const EditProfilePage(),
     ),
 
     // ── App Principal (com BottomNavigationBar) ────────────────────────────

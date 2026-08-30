@@ -44,10 +44,13 @@ import '../services/geolocator_location_service_impl.dart';
 
 import '../../features/auth/data/repositories/supabase_auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/domain/usecases/get_current_user.dart';
 import '../../features/auth/domain/usecases/get_current_user_id.dart';
 import '../../features/auth/domain/usecases/sign_in.dart';
 import '../../features/auth/domain/usecases/sign_out.dart';
 import '../../features/auth/domain/usecases/sign_up.dart';
+import '../../features/auth/domain/usecases/update_profile.dart';
+
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 /// Instância do localizador de serviços global.
@@ -62,10 +65,11 @@ Future<void> init() async {
   // Registra instâncias do tipo Factory, para criar uma nova instância a cada solicitação.
   sl.registerFactory(
     () => AuthBloc(
-      getCurrentUserIdUseCase: sl(),
+      getCurrentUserUseCase: sl(),
       signInUseCase: sl(),
       signUpUseCase: sl(),
       signOutUseCase: sl(),
+      updateProfileUseCase: sl(),
     ),
   );
   sl.registerFactory(
@@ -128,6 +132,8 @@ Future<void> init() async {
   sl.registerLazySingleton(() => SignUpUseCase(sl()));
   sl.registerLazySingleton(() => SignOutUseCase(sl()));
   sl.registerLazySingleton(() => GetCurrentUserIdUseCase(sl()));
+  sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
 
   // --- Data Layer (External) ---
   // O SupabaseClient é um singleton já inicializado no main(); apenas o referenciamos aqui.
