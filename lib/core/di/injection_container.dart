@@ -1,7 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:http/http.dart' as http;
 import '../../features/routes/data/repositories/ors_route_repository_impl.dart';
 import '../../features/routes/data/repositories/supabase_place_repository_impl.dart';
 import '../../features/routes/domain/repositories/place_repository.dart';
@@ -75,7 +75,7 @@ Future<void> init() async {
   sl.registerFactory(
     () => RoutePlanningBloc(
       calculateAccessibleRouteUseCase: sl(),
-      profileNavigationBloc: sl(),
+      preferencesReader: sl<ProfileNavigationBloc>(),
       getCurrentLocationPlaceUseCase: sl(),
       getObstaclesUseCase: sl(),
       saveRecentSearchUseCase: sl(),
@@ -94,10 +94,7 @@ Future<void> init() async {
     ),
   );
   sl.registerFactory(
-    () => AddPlaceBloc(
-      addPlaceUseCase: sl(),
-      deletePlaceUseCase: sl(),
-    ),
+    () => AddPlaceBloc(addPlaceUseCase: sl(), deletePlaceUseCase: sl()),
   );
   sl.registerFactory(() => CommunityBloc());
   sl.registerFactory(
@@ -106,6 +103,7 @@ Future<void> init() async {
       locationTrackingRepository: sl(),
       calculateAccessibleRouteUseCase: sl(),
       getObstaclesUseCase: sl(),
+      preferencesReader: sl<ProfileNavigationBloc>(),
     ),
   );
 
@@ -117,7 +115,9 @@ Future<void> init() async {
   sl.registerLazySingleton(() => GetObstaclesUseCase(sl()));
   sl.registerLazySingleton(() => ReportObstacleUseCase(sl()));
   sl.registerLazySingleton(() => DeleteObstacleUseCase(sl()));
-  sl.registerLazySingleton(() => CalculateAccessibleRouteUseCase(sl(), sl()));
+  sl.registerLazySingleton(
+    () => CalculateAccessibleRouteUseCase(sl()),
+  );
   sl.registerLazySingleton(
     () =>
         SearchAddressUseCase(placeRepository: sl(), geocodingRepository: sl()),
@@ -140,9 +140,16 @@ Future<void> init() async {
   sl.registerLazySingleton<SupabaseClient>(() => Supabase.instance.client);
 
   // --- Data Layer (Repositories) ---
-  sl.registerLazySingleton<RouteRepository>(() => ORSRouteRepositoryImpl());
+  sl.registerLazySingleton<http.Client>(
+    () => http.Client(),
+    dispose: (client) => client.close(),
+  );
+
+  sl.registerLazySingleton<RouteRepository>(
+    () => ORSRouteRepositoryImpl(client: sl()),
+  );
   sl.registerLazySingleton<ObstacleLocalDataSource>(
-    () => ObstacleLocalDataSourceImpl(sharedPreferences: sl()),
+    () => ObstacleLocalDataSourceImpl(),
   );
   sl.registerLazySingleton<ObstacleRepository>(
     () => SupabaseObstacleRepositoryImpl(
@@ -156,7 +163,7 @@ Future<void> init() async {
     () => SupabaseAuthRepositoryImpl(supabaseClient: sl()),
   );
   sl.registerLazySingleton<GeocodingRepository>(
-    () => NominatimGeocodingRepositoryImpl(),
+    () => NominatimGeocodingRepositoryImpl(client: sl()),
   );
   sl.registerLazySingleton<VoiceNavigationService>(
     () => FlutterTtsServiceImpl(),

@@ -8,11 +8,8 @@ import '../repositories/route_repository.dart';
 
 class CalculateAccessibleRouteUseCase {
   final RouteRepository _routeRepository;
-  final ObstacleRepository _obstacleRepository;
-
   CalculateAccessibleRouteUseCase(
     this._routeRepository,
-    this._obstacleRepository,
   );
 
   Future<Either<Failure, List<NavigationRoute>>> call({
@@ -27,10 +24,6 @@ class CalculateAccessibleRouteUseCase {
     try {
       List<Obstacle> allObstacles = List.from(activeObstacles);
 
-      if (allObstacles.isEmpty) {
-        final obstaclesResult = await _obstacleRepository.getObstacles();
-        obstaclesResult.fold((_) {}, (obs) => allObstacles.addAll(obs));
-      }
 
       const distanceCalc = Distance();
       final originPoint = LatLng(originLat, originLng);

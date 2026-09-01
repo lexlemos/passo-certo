@@ -16,13 +16,13 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
-  
+
   bool _obscurePassword = true;
   bool _isBlind = false;
   bool _reducedMobility = false;
@@ -39,7 +39,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   void _onSubmit() {
     if (!_formKey.currentState!.validate()) return;
-    
+
     context.read<AuthBloc>().add(
       AuthSignUpRequested(
         name: _nameController.text.trim(),
@@ -127,7 +127,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                 ),
                 const SizedBox(height: 36),
-                
+
                 // ── Formulário ───────────────────────────────────────────
                 BlocBuilder<AuthBloc, AuthState>(
                   builder: (context, state) {
@@ -157,7 +157,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 },
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // E-mail
                               _AuthTextField(
                                 controller: _emailController,
@@ -171,14 +171,15 @@ class _SignUpPageState extends State<SignUpPage> {
                                   if (value == null || value.trim().isEmpty) {
                                     return 'Informe seu e-mail.';
                                   }
-                                  if (!value.contains('@') || !value.contains('.')) {
+                                  if (!value.contains('@') ||
+                                      !value.contains('.')) {
                                     return 'E-mail inválido.';
                                   }
                                   return null;
                                 },
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // Senha
                               _AuthTextField(
                                 controller: _passwordController,
@@ -198,7 +199,10 @@ class _SignUpPageState extends State<SignUpPage> {
                                   ),
                                   onPressed: isLoading
                                       ? null
-                                      : () => setState(() => _obscurePassword = !_obscurePassword),
+                                      : () => setState(
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.length < 6) {
@@ -208,7 +212,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 },
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // Telefone
                               _AuthTextField(
                                 controller: _phoneController,
@@ -220,7 +224,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 enabled: !isLoading,
                               ),
                               const SizedBox(height: 16),
-                              
+
                               // Telefone de Emergência
                               _AuthTextField(
                                 controller: _emergencyPhoneController,
@@ -232,7 +236,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                 enabled: !isLoading,
                               ),
                               const SizedBox(height: 24),
-                              
+
                               // Perguntas de Acessibilidade
                               const Text(
                                 'Acessibilidade',
@@ -243,9 +247,11 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              
+
                               SwitchListTile(
-                                title: const Text('Possui deficiência visual (cego)?'),
+                                title: const Text(
+                                  'Possui deficiência visual (cego)?',
+                                ),
                                 value: _isBlind,
                                 activeTrackColor: AuthColors.tealLink,
                                 inactiveThumbColor: Colors.grey,
@@ -254,16 +260,20 @@ class _SignUpPageState extends State<SignUpPage> {
                                     ? null
                                     : (val) => setState(() => _isBlind = val),
                               ),
-                              
+
                               SwitchListTile(
-                                title: const Text('Possui mobilidade reduzida?'),
+                                title: const Text(
+                                  'Possui mobilidade reduzida?',
+                                ),
                                 value: _reducedMobility,
                                 activeTrackColor: AuthColors.tealLink,
                                 inactiveThumbColor: Colors.grey,
                                 contentPadding: EdgeInsets.zero,
                                 onChanged: isLoading
                                     ? null
-                                    : (val) => setState(() => _reducedMobility = val),
+                                    : (val) => setState(
+                                        () => _reducedMobility = val,
+                                      ),
                               ),
                             ],
                           ),
@@ -272,7 +282,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 32),
                 // ── Botão principal ─────────────────────────────────────────
                 BlocBuilder<AuthBloc, AuthState>(
@@ -286,17 +296,14 @@ class _SignUpPageState extends State<SignUpPage> {
                   },
                 ),
                 const SizedBox(height: 32),
-                
+
                 // ── Rodapé: link para login ───────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
                       'Já tem uma conta? ',
-                      style: TextStyle(
-                        color: Color(0xFF718096),
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Color(0xFF718096), fontSize: 15),
                     ),
                     GestureDetector(
                       onTap: () => context.go('/login'),
@@ -362,10 +369,7 @@ class _AuthTextField extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       validator: validator,
-      style: const TextStyle(
-        fontSize: 15,
-        color: Color(0xFF1A1A2E),
-      ),
+      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A2E)),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

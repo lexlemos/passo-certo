@@ -42,8 +42,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     _nameController = TextEditingController(text: _currentUser.name);
     _phoneController = TextEditingController(text: _currentUser.phone ?? '');
-    _emergencyPhoneController =
-        TextEditingController(text: _currentUser.emergencyPhone ?? '');
+    _emergencyPhoneController = TextEditingController(
+      text: _currentUser.emergencyPhone ?? '',
+    );
   }
 
   @override
@@ -228,10 +229,7 @@ class _TextField extends StatelessWidget {
       enabled: enabled,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(
-        fontSize: 15,
-        color: Color(0xFF1A1A2E),
-      ),
+      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A2E)),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

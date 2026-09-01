@@ -52,14 +52,14 @@ class AuthSignUpRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [
-        email,
-        password,
-        name,
-        phone,
-        emergencyPhone,
-        isBlind,
-        reducedMobility,
-      ];
+    email,
+    password,
+    name,
+    phone,
+    emergencyPhone,
+    isBlind,
+    reducedMobility,
+  ];
 }
 
 /// Solicita encerramento da sessão atual.
@@ -212,10 +212,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     await result.fold(
       (failure) async {
-        developer.log(
-          'Login falhou: ${failure.message}',
-          name: _logName,
-        );
+        developer.log('Login falhou: ${failure.message}', name: _logName);
         emit(AuthError(failure.message));
       },
       (userId) async {
@@ -250,24 +247,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     await result.fold(
       (failure) async {
-        developer.log(
-          'Cadastro falhou: ${failure.message}',
-          name: _logName,
-        );
+        developer.log('Cadastro falhou: ${failure.message}', name: _logName);
         emit(AuthError(failure.message));
       },
       (userId) async {
-        developer.log(
-          'Cadastro bem-sucedido. userId: $userId',
-          name: _logName,
-        );
+        developer.log('Cadastro bem-sucedido. userId: $userId', name: _logName);
         // Espera um tempinho pro banco (trigger) terminar de inserir o public.users se precisar.
         await Future.delayed(const Duration(milliseconds: 500));
         final user = await _getCurrentUserUseCase();
         if (user != null) {
           emit(Authenticated(user));
         } else {
-          emit(const AuthError('Erro ao buscar dados do usuário recém-criado.'));
+          emit(
+            const AuthError('Erro ao buscar dados do usuário recém-criado.'),
+          );
         }
       },
     );
@@ -300,7 +293,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthUpdateProfileRequested event,
     Emitter<AuthState> emit,
   ) async {
-    developer.log('Update de perfil solicitado para: ${event.user.id}', name: _logName);
+    developer.log(
+      'Update de perfil solicitado para: ${event.user.id}',
+      name: _logName,
+    );
     // Guarda o estado anterior de sucesso (Authenticated) para fallback
     final currentState = state;
     if (currentState is! Authenticated) return;
@@ -308,7 +304,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     final result = await _updateProfileUseCase(event.user);
-    
+
     result.fold(
       (failure) {
         developer.log('Update falhou: ${failure.message}', name: _logName);

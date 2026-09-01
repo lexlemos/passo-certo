@@ -28,7 +28,10 @@ class HomePage extends StatelessWidget {
               if (state is Authenticated) {
                 firstName = state.user.name.split(' ').first;
               }
-              return Text('Olá, $firstName!', style: theme.textTheme.headlineLarge);
+              return Text(
+                'Olá, $firstName!',
+                style: theme.textTheme.headlineLarge,
+              );
             },
           ),
           const SizedBox(height: 4),

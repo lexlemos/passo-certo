@@ -71,11 +71,7 @@ class SupabaseAuthRepositoryImpl implements AuthRepository {
       debugPrint('[AuthRepo] Erro de Login (AuthException): ${e.message}');
       return Left(AuthFailure(_friendlyAuthMessage(e)));
     } catch (e) {
-      developer.log(
-        'Erro inesperado no signIn: $e',
-        error: e,
-        name: _logName,
-      );
+      developer.log('Erro inesperado no signIn: $e', error: e, name: _logName);
       debugPrint('[AuthRepo] Erro de Login (inesperado): $e');
       return Left(AuthFailure('Erro inesperado ao fazer login: $e'));
     }
@@ -133,11 +129,7 @@ class SupabaseAuthRepositoryImpl implements AuthRepository {
       );
       return Left(AuthFailure(_friendlyAuthMessage(e)));
     } catch (e) {
-      developer.log(
-        'Erro inesperado no signUp: $e',
-        error: e,
-        name: _logName,
-      );
+      developer.log('Erro inesperado no signUp: $e', error: e, name: _logName);
       return Left(AuthFailure('Erro inesperado ao criar conta: $e'));
     }
   }
@@ -159,11 +151,7 @@ class SupabaseAuthRepositoryImpl implements AuthRepository {
       );
       return Left(AuthFailure(_friendlyAuthMessage(e)));
     } catch (e) {
-      developer.log(
-        'Erro inesperado no signOut: $e',
-        error: e,
-        name: _logName,
-      );
+      developer.log('Erro inesperado no signOut: $e', error: e, name: _logName);
       return Left(AuthFailure('Erro inesperado ao fazer logout: $e'));
     }
   }
@@ -214,21 +202,20 @@ class SupabaseAuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> updateProfile(User user) async {
     try {
-      await supabaseClient.from('users').update({
-        'name': user.name,
-        'phone': user.phone,
-        'emergency_phone': user.emergencyPhone,
-        'is_blind': user.isBlind,
-        'reduced_mobility': user.reducedMobility,
-      }).eq('id', user.id);
+      await supabaseClient
+          .from('users')
+          .update({
+            'name': user.name,
+            'phone': user.phone,
+            'emergency_phone': user.emergencyPhone,
+            'is_blind': user.isBlind,
+            'reduced_mobility': user.reducedMobility,
+          })
+          .eq('id', user.id);
 
       return const Right(null);
     } catch (e) {
-      developer.log(
-        'Erro ao atualizar perfil: $e',
-        error: e,
-        name: _logName,
-      );
+      developer.log('Erro ao atualizar perfil: $e', error: e, name: _logName);
       return Left(AuthFailure('Erro ao atualizar perfil: $e'));
     }
   }

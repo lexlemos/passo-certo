@@ -23,8 +23,8 @@ class UserModel extends User {
       emergencyPhone: json['emergency_phone'] as String?,
       isBlind: json['is_blind'] == true,
       reducedMobility: json['reduced_mobility'] == true,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String) 
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
     );
   }

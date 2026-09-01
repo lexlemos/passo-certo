@@ -52,7 +52,7 @@ class NavigationRoute {
   final List<String> characteristics;
   final List<RouteCoordinate> waypoints;
   final List<RouteStep> steps;
-  final List<LatLng> latLngWaypoints;
+  final List<LatLng> displayPoints;
 
   NavigationRoute({
     required this.title,
@@ -61,10 +61,9 @@ class NavigationRoute {
     required this.accessibilityScore,
     required this.characteristics,
     required this.waypoints,
+    required this.displayPoints,
     this.steps = const [],
-  }) : latLngWaypoints = waypoints
-           .map((c) => LatLng(c.latitude, c.longitude))
-           .toList();
+  });
 
   bool get isHighlyAccessible => accessibilityScore >= 0.8;
 
@@ -80,7 +79,7 @@ class NavigationRoute {
           listEquals(characteristics, other.characteristics) &&
           listEquals(waypoints, other.waypoints) &&
           listEquals(steps, other.steps) &&
-          listEquals(latLngWaypoints, other.latLngWaypoints);
+          listEquals(displayPoints, other.displayPoints);
 
   @override
   int get hashCode =>
@@ -91,5 +90,5 @@ class NavigationRoute {
       Object.hashAll(characteristics) ^
       Object.hashAll(waypoints) ^
       Object.hashAll(steps) ^
-      Object.hashAll(latLngWaypoints);
+      Object.hashAll(displayPoints);
 }

@@ -8,6 +8,69 @@ import '../../../community/domain/entities/obstacle.dart';
 import '../../domain/entities/navigation_route.dart';
 import '../../domain/repositories/route_repository.dart';
 import '../../../../core/utils/geo_utils.dart';
+import 'dart:math' as math;
+
+class RouteGeometrySimplifier {
+  static List<LatLng> rdp(List<RouteCoordinate> points, double epsilon) {
+    if (points.length < 3) {
+      return points.map((p) => LatLng(p.latitude, p.longitude)).toList();
+    }
+
+    double dmax = 0;
+    int index = 0;
+
+    for (int i = 1; i < points.length - 1; i++) {
+      double d = _perpendicularDistance(
+        points[i],
+        points[0],
+        points[points.length - 1],
+      );
+      if (d > dmax) {
+        index = i;
+        dmax = d;
+      }
+    }
+
+    List<LatLng> res = [];
+    if (dmax > epsilon) {
+      List<LatLng> recResults1 = rdp(points.sublist(0, index + 1), epsilon);
+      List<LatLng> recResults2 = rdp(
+        points.sublist(index, points.length),
+        epsilon,
+      );
+
+      res.addAll(recResults1.sublist(0, recResults1.length - 1));
+      res.addAll(recResults2);
+    } else {
+      res.add(LatLng(points[0].latitude, points[0].longitude));
+      res.add(
+        LatLng(
+          points[points.length - 1].latitude,
+          points[points.length - 1].longitude,
+        ),
+      );
+    }
+    return res;
+  }
+
+  static double _perpendicularDistance(
+    RouteCoordinate pt,
+    RouteCoordinate lineStart,
+    RouteCoordinate lineEnd,
+  ) {
+    double x0 = pt.longitude;
+    double y0 = pt.latitude;
+    double x1 = lineStart.longitude;
+    double y1 = lineStart.latitude;
+    double x2 = lineEnd.longitude;
+    double y2 = lineEnd.latitude;
+
+    double num = ((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1).abs();
+    double den = math.sqrt(math.pow(y2 - y1, 2) + math.pow(x2 - x1, 2));
+    if (den == 0) return 0;
+    return num / den;
+  }
+}
 
 /// Perfis de rota suportados pelo OpenRouteService
 enum _OrsProfile {
@@ -51,12 +114,13 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     // walkingAvoidanceList → APENAS bloqueios totais de calçada para pedestres:
     //   blockedSidewalk  (o pedestre contorna buracos/piso ruim com o passo)
     // -------------------------------------------------------------------------
-    final accessibleAvoidanceList = List<Obstacle>.from(blockingObstacles ?? []);
+    final accessibleAvoidanceList = List<Obstacle>.from(
+      blockingObstacles ?? [],
+    );
 
-    final walkingAvoidanceList =
-        (blockingObstacles ?? []).where((obs) {
-          return obs.type == ObstacleType.blockedSidewalk;
-        }).toList();
+    final walkingAvoidanceList = (blockingObstacles ?? []).where((obs) {
+      return obs.type == ObstacleType.blockedSidewalk;
+    }).toList();
 
     // Dispara as duas requisições em paralelo com listas de obstáculos distintas
     final results = await Future.wait([
@@ -289,6 +353,9 @@ class ORSRouteRepositoryImpl implements RouteRepository {
       distanceMeters,
     );
 
+    // Epsilon de ~2 metros em graus geográficos (aprox 0.00002)
+    final displayPoints = RouteGeometrySimplifier.rdp(waypoints, 0.00002);
+
     // Metadados específicos de cada perfil
     return switch (profile) {
       _OrsProfile.wheelchair => NavigationRoute(
@@ -302,6 +369,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
           'PREFERE RAMPAS',
         ],
         waypoints: waypoints,
+        displayPoints: displayPoints,
         steps: steps,
       ),
       _OrsProfile.footWalking => NavigationRoute(
@@ -311,6 +379,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         accessibilityScore: dynamicScore,
         characteristics: const ['PEDESTRE SEM RESTRIÇÃO', 'CAMINHO MAIS CURTO'],
         waypoints: waypoints,
+        displayPoints: displayPoints,
         steps: steps,
       ),
     };

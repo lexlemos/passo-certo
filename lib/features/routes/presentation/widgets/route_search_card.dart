@@ -109,8 +109,9 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                   if (pattern.trim().length < 3) {
                                     return const [];
                                   }
-                                  final state =
-                                      context.read<RoutePlanningBloc>().state;
+                                  final state = context
+                                      .read<RoutePlanningBloc>()
+                                      .state;
                                   return await searchAddressUseCase(
                                     pattern,
                                     userLat: state.originLat,
@@ -125,8 +126,7 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                     ),
                                     title: Text(
                                       place.name,
-                                      style:
-                                          const TextStyle(fontSize: 14),
+                                      style: const TextStyle(fontSize: 14),
                                     ),
                                   );
                                 },
@@ -158,71 +158,65 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                         color: AppTheme.spaceBlue,
                                         size: 20,
                                       ),
-                                      suffixIcon:
-                                          ValueListenableBuilder<
-                                            TextEditingValue
-                                          >(
-                                            valueListenable: controller,
-                                            builder: (context, value, _) {
-                                              final isNotEmpty =
-                                                  value.text.isNotEmpty;
-                                              return Row(
-                                                mainAxisSize:
-                                                    MainAxisSize.min,
-                                                children: [
-                                                  if (isNotEmpty)
-                                                    Semantics(
-                                                      button: true,
-                                                      label:
-                                                          'Limpar texto da origem',
-                                                      child: IconButton(
-                                                        icon: const Icon(
-                                                          Icons.clear,
-                                                          size: 18,
-                                                        ),
-                                                        onPressed: () {
-                                                          controller.clear();
-                                                          context
-                                                              .read<
-                                                                RoutePlanningBloc
-                                                              >()
-                                                              .add(
-                                                                ClearOriginEvent(),
-                                                              );
-                                                        },
-                                                      ),
+                                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                                        valueListenable: controller,
+                                        builder: (context, value, _) {
+                                          final isNotEmpty =
+                                              value.text.isNotEmpty;
+                                          return Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (isNotEmpty)
+                                                Semantics(
+                                                  button: true,
+                                                  label:
+                                                      'Limpar texto da origem',
+                                                  child: IconButton(
+                                                    icon: const Icon(
+                                                      Icons.clear,
+                                                      size: 18,
                                                     ),
-                                                  Semantics(
-                                                    button: true,
-                                                    label:
-                                                        'Botão Minha Localização. Obter localização atual via GPS.',
-                                                    child: IconButton(
-                                                      icon: const Icon(
-                                                        Icons.my_location,
-                                                        color:
-                                                            AppTheme.spaceBlue,
-                                                        size: 18,
-                                                      ),
-                                                      onPressed: () {
-                                                        context
-                                                            .read<
-                                                              RoutePlanningBloc
-                                                            >()
-                                                            .add(
-                                                              FetchCurrentLocationForOriginEvent(),
-                                                            );
-                                                      },
-                                                    ),
+                                                    onPressed: () {
+                                                      controller.clear();
+                                                      context
+                                                          .read<
+                                                            RoutePlanningBloc
+                                                          >()
+                                                          .add(
+                                                            ClearOriginEvent(),
+                                                          );
+                                                    },
                                                   ),
-                                                ],
-                                              );
-                                            },
-                                          ),
+                                                ),
+                                              Semantics(
+                                                button: true,
+                                                label:
+                                                    'Botão Minha Localização. Obter localização atual via GPS.',
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    Icons.my_location,
+                                                    color: AppTheme.spaceBlue,
+                                                    size: 18,
+                                                  ),
+                                                  onPressed: () {
+                                                    context
+                                                        .read<
+                                                          RoutePlanningBloc
+                                                        >()
+                                                        .add(
+                                                          FetchCurrentLocationForOriginEvent(),
+                                                        );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
                                       filled: true,
                                       fillColor: AppTheme.softGreyBg,
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide.none,
                                       ),
                                     ),
@@ -239,8 +233,9 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                 controller: widget.destinationController,
                                 focusNode: _destinationFocusNode,
                                 suggestionsCallback: (pattern) async {
-                                  final state =
-                                      context.read<RoutePlanningBloc>().state;
+                                  final state = context
+                                      .read<RoutePlanningBloc>()
+                                      .state;
                                   if (pattern.isEmpty) {
                                     return state.recentSearches;
                                   }
@@ -256,8 +251,9 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                 emptyBuilder: (context) =>
                                     const SizedBox.shrink(),
                                 itemBuilder: (context, place) {
-                                  final state =
-                                      context.read<RoutePlanningBloc>().state;
+                                  final state = context
+                                      .read<RoutePlanningBloc>()
+                                      .state;
                                   final isRecent = state.recentSearches.any(
                                     (p) => p.name == place.name,
                                   );
@@ -270,8 +266,7 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                     ),
                                     title: Text(
                                       place.name,
-                                      style:
-                                          const TextStyle(fontSize: 14),
+                                      style: const TextStyle(fontSize: 14),
                                     ),
                                   );
                                 },
@@ -286,8 +281,9 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                       destLng: place.longitude,
                                     ),
                                   );
-                                  final state =
-                                      context.read<RoutePlanningBloc>().state;
+                                  final state = context
+                                      .read<RoutePlanningBloc>()
+                                      .state;
                                   if (state.originLat != null) {
                                     context.read<RoutePlanningBloc>().add(
                                       CalculateRouteEvent(),
@@ -348,8 +344,7 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                                       filled: true,
                                       fillColor: AppTheme.softGreyBg,
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide.none,
                                       ),
                                     ),
@@ -378,8 +373,7 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                               onPressed: () {
                                 context.read<RoutePlanningBloc>().add(
                                   SwapLocationsEvent(
-                                    originText:
-                                        widget.originController.text,
+                                    originText: widget.originController.text,
                                     destinationText:
                                         widget.destinationController.text,
                                   ),
@@ -472,7 +466,6 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                   ),
                 ],
 
-
                 // ============================================================
                 // MODO VISUALIZAÇÃO — HUD minimalista para caminhada livre
                 // ============================================================
@@ -530,7 +523,8 @@ class _RouteSearchCardState extends State<RouteSearchCard> {
                             ),
                           )
                         : const Icon(Icons.search, color: Colors.white),
-                    onPressed: (planningState.originLat != null &&
+                    onPressed:
+                        (planningState.originLat != null &&
                             planningState.destLat != null &&
                             !planningState.isLoading)
                         ? () {
@@ -621,13 +615,14 @@ class _RouteOptionButton extends StatelessWidget {
       scoreTag = 'Caminho padrão • $scorePct%';
     }
 
-    final accentColor =
-        isAccessible ? AppTheme.mintGreen : const Color(0xFF2196F3);
+    final accentColor = isAccessible
+        ? AppTheme.mintGreen
+        : const Color(0xFF2196F3);
 
     final backgroundColor = isSelected
         ? (isAccessible
-            ? AppTheme.mintGreen.withValues(alpha: 0.14)
-            : const Color(0xFF2196F3).withValues(alpha: 0.14))
+              ? AppTheme.mintGreen.withValues(alpha: 0.14)
+              : const Color(0xFF2196F3).withValues(alpha: 0.14))
         : AppTheme.softGreyBg;
     final borderColor = isSelected ? accentColor : Colors.grey.shade300;
     final textColor = AppTheme.spaceBlue;
@@ -690,9 +685,7 @@ class _RouteOptionButton extends StatelessWidget {
                 Text(
                   scoreTag,
                   style: TextStyle(
-                    color: isSelected
-                        ? AppTheme.spaceBlue
-                        : AppTheme.textMuted,
+                    color: isSelected ? AppTheme.spaceBlue : AppTheme.textMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),

@@ -29,7 +29,6 @@ class ProfilePage extends StatelessWidget {
         builder: (context) {
           return MultiBlocListener(
             listeners: [
-
               BlocListener<ProfileNavigationBloc, ProfileNavigationState>(
                 listenWhen: (prev, curr) => prev.hasError != curr.hasError,
                 listener: (context, state) {
@@ -101,10 +100,7 @@ class _EditProfileButton extends StatelessWidget {
         icon: const Icon(Icons.edit, color: Colors.white),
         label: const Text(
           'Editar Perfil',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.tealPrimary,
@@ -117,6 +113,7 @@ class _EditProfileButton extends StatelessWidget {
     );
   }
 }
+
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton();
 

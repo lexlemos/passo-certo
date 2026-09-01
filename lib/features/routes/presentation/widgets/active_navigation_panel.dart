@@ -135,10 +135,7 @@ class ActiveNavigationPanel extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.softGreyBg,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey.shade300,
-                      width: 1.0,
-                    ),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.0),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,

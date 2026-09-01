@@ -135,30 +135,33 @@ class AddPlaceBloc extends Bloc<AddPlaceEvent, AddPlaceState> {
 
     final result = await _addPlaceUseCase(place);
 
-    result.fold((failure) {
-      developer.log(
-        'Falha capturada no BLoC (Place): ${failure.message}',
-        name: 'DebugInsercao',
-      );
-      // Reverte
-      final reverted = state.newlyAddedPlaces
-          .where((p) => p.name != place.name && p.latitude != place.latitude)
-          .toList();
-      developer.log('Revertendo lista de locais', name: 'DebugInsercao');
-      emit(
-        state.copyWith(
-          isLoading: false,
-          errorMessage: failure.message,
-          newlyAddedPlaces: reverted,
-        ),
-      );
-    }, (addedPlace) {
-      developer.log(
-        'Sucesso retornado pelo UseCase (Place)!',
-        name: 'DebugInsercao',
-      );
-      emit(state.copyWith(isLoading: false, isSuccess: true));
-    });
+    result.fold(
+      (failure) {
+        developer.log(
+          'Falha capturada no BLoC (Place): ${failure.message}',
+          name: 'DebugInsercao',
+        );
+        // Reverte
+        final reverted = state.newlyAddedPlaces
+            .where((p) => p.name != place.name && p.latitude != place.latitude)
+            .toList();
+        developer.log('Revertendo lista de locais', name: 'DebugInsercao');
+        emit(
+          state.copyWith(
+            isLoading: false,
+            errorMessage: failure.message,
+            newlyAddedPlaces: reverted,
+          ),
+        );
+      },
+      (addedPlace) {
+        developer.log(
+          'Sucesso retornado pelo UseCase (Place)!',
+          name: 'DebugInsercao',
+        );
+        emit(state.copyWith(isLoading: false, isSuccess: true));
+      },
+    );
   }
 
   Future<void> _onDeletePlace(
@@ -170,7 +173,7 @@ class AddPlaceBloc extends Bloc<AddPlaceEvent, AddPlaceState> {
       name: 'AddPlaceBloc',
     );
 
-    // Otimista: remove da lista local imediatamente
+    final originalList = List<Place>.from(state.newlyAddedPlaces);
     final optimisticList = state.newlyAddedPlaces
         .where((p) => p.id != event.placeId)
         .toList();
@@ -193,7 +196,11 @@ class AddPlaceBloc extends Bloc<AddPlaceEvent, AddPlaceState> {
           name: 'AddPlaceBloc',
         );
         emit(
-          state.copyWith(isDeleting: false, errorMessage: failure.message),
+          state.copyWith(
+            isDeleting: false,
+            errorMessage: failure.message,
+            newlyAddedPlaces: originalList,
+          ),
         );
       },
       (_) {
