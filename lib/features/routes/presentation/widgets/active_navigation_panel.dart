@@ -22,19 +22,28 @@ class ActiveNavigationPanel extends StatelessWidget {
         ? '${activeNavState.distanceToNextStep.toStringAsFixed(0)} m'
         : 'Próximo';
 
+    final remainingMeters = activeNavState.remainingDistanceMeters;
+    final remainingDistanceText = remainingMeters >= 1000
+        ? '${(remainingMeters / 1000).toStringAsFixed(1)} km'
+        : '${remainingMeters.toStringAsFixed(0)} m';
+    final remainingTimeText = '${activeNavState.remainingDurationMinutes} min';
+
     return Positioned(
       top: 16,
       left: 16,
       right: 16,
       child: Semantics(
         label:
-            'Painel de Navegação Ativa. Instrução atual: $instructionText. Distância: $distanceText',
+            'Painel de Navegação Ativa. Instrução atual: $instructionText. Distância da conversão: $distanceText. Restante: $remainingDistanceText. Tempo estimado: $remainingTimeText.',
         child: Card(
-          elevation: 8,
-          color: AppTheme.spaceBlue,
+          elevation: 6,
+          color: Theme.of(context).colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: AppTheme.mintGreen, width: 2),
+            side: BorderSide(
+              color: AppTheme.mintGreen.withValues(alpha: 0.6),
+              width: 1.5,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -44,17 +53,24 @@ class ActiveNavigationPanel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.navigation,
-                      color: AppTheme.mintGreen,
-                      size: 28,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.mintGreen.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.navigation,
+                        color: AppTheme.spaceBlue,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Navegação Ativa',
                         style: theme.textTheme.titleMedium?.copyWith(
-                          color: Colors.white,
+                          color: AppTheme.spaceBlue,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -84,7 +100,7 @@ class ActiveNavigationPanel extends StatelessWidget {
                 Text(
                   instructionText,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
+                    color: AppTheme.spaceBlue,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 3,
@@ -95,19 +111,87 @@ class ActiveNavigationPanel extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Distância até a conversão:',
+                      'Próxima conversão:',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
+                        color: AppTheme.textMuted,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       distanceText,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: AppTheme.mintGreen,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: AppTheme.spaceBlue,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.softGreyBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey.shade300,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Column(
+                        children: [
+                          const Text(
+                            'Distância Restante',
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            remainingDistanceText,
+                            style: const TextStyle(
+                              color: AppTheme.spaceBlue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        height: 28,
+                        width: 1,
+                        color: Colors.grey.shade300,
+                      ),
+                      Column(
+                        children: [
+                          const Text(
+                            'Chegada (ETA)',
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            remainingTimeText,
+                            style: const TextStyle(
+                              color: AppTheme.spaceBlue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
@@ -119,12 +203,16 @@ class ActiveNavigationPanel extends StatelessWidget {
                   icon: const Icon(Icons.close, color: Colors.white),
                   label: const Text(
                     'Encerrar Navegação',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.emergencyRed,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),

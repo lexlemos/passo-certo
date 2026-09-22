@@ -7,11 +7,9 @@ import '../../features/routes/presentation/pages/route_planning_page.dart';
 import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
 import '../../features/routes/presentation/bloc/active_navigation_bloc.dart';
 import '../../features/routes/presentation/bloc/add_place_bloc.dart';
-import '../../features/community/presentation/pages/community_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../widgets/main_navigation_shell.dart';
 import '../di/injection_container.dart' as di;
-import '../../features/community/presentation/bloc/community_bloc.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -51,18 +49,6 @@ final GoRouter appRouter = GoRouter(
                   ),
                 ],
                 child: const RoutePlanningPage(),
-              ),
-            ),
-          ],
-        ),
-
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/community',
-              builder: (context, state) => BlocProvider<CommunityBloc>(
-                create: (_) => di.sl<CommunityBloc>(),
-                child: const CommunityPage(),
               ),
             ),
           ],

@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/errors/failures.dart';
@@ -45,6 +46,46 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
     }
   }
 
+  /// Marca um obstáculo existente como `RESOLVED` (soft-delete).
+  ///
+  /// O obstáculo não é removido fisicamente; apenas seu `status` é atualizado
+  /// para `'RESOLVED'`, fazendo com que ele deixe de aparecer no mapa
+  /// (pois [getObstacles] filtra apenas `status = 'ACTIVE'`).
+  @override
+  Future<Either<Failure, void>> deleteObstacle(String obstacleId) async {
+    developer.log(
+      'Iniciando exclusão (soft-delete) do Obstáculo. ID: $obstacleId',
+      name: 'SupabaseObstacleRepositoryImpl',
+    );
+    try {
+      await supabaseClient
+          .from('obstacles')
+          .update({'status': 'RESOLVED'})
+          .eq('id', obstacleId);
+
+      developer.log(
+        'Obstáculo marcado como RESOLVED com sucesso!',
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
+
+      return const Right(null);
+    } on PostgrestException catch (e) {
+      developer.log(
+        'PostgrestException ao excluir obstáculo: ${e.message}',
+        error: e,
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
+      return Left(ServerFailure('Falha ao excluir obstáculo: ${e.message}'));
+    } catch (e) {
+      developer.log(
+        'Erro inesperado ao excluir obstáculo: $e',
+        error: e,
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
+      return Left(ServerFailure('Erro inesperado ao excluir obstáculo: $e'));
+    }
+  }
+
   /// Persiste um novo obstáculo na tabela `obstacles`.
   ///
   /// O [Obstacle.id] recebido deve ser um UUID v4 gerado no cliente
@@ -54,10 +95,10 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
   /// do PostgreSQL, independente do timezone do dispositivo do usuário.
   @override
   Future<Either<Failure, void>> reportObstacle(Obstacle obstacle) async {
-    print('================================================');
-    print('[DEBUG_INSERCAO] Iniciando inserção de Obstáculo');
-    print('[DEBUG_INSERCAO] ID: ${obstacle.id}');
-    print('[DEBUG_INSERCAO] Tipo: ${obstacle.type}');
+    developer.log(
+      'Iniciando inserção de Obstáculo. ID: ${obstacle.id}, Tipo: ${obstacle.type}',
+      name: 'SupabaseObstacleRepositoryImpl',
+    );
     try {
       final model = ObstacleModel(
         id: obstacle.id,
@@ -72,18 +113,28 @@ class SupabaseObstacleRepositoryImpl implements ObstacleRepository {
         status: obstacle.status,
       );
 
-      print('[DEBUG_INSERCAO] JSON a ser enviado: ${model.toJson()}');
-      final response = await supabaseClient.from('obstacles').insert(model.toJson()).select();
-      print('[DEBUG_INSERCAO] Inserção concluída com sucesso! Resposta: $response');
+      await supabaseClient.from('obstacles').insert(model.toJson()).select();
+      developer.log(
+        'Inserção de obstáculo concluída com sucesso!',
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
 
       return const Right(null);
     } on PostgrestException catch (e) {
-      print('[DEBUG_INSERCAO] PostgrestException: ${e.message}');
-      print('[DEBUG_INSERCAO] Detalhes: ${e.details}, Hint: ${e.hint}');
+      developer.log(
+        'PostgrestException ao reportar obstáculo: ${e.message}',
+        error: e,
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
       return Left(ServerFailure('Falha ao reportar obstáculo: ${e.message}'));
     } catch (e) {
-      print('[DEBUG_INSERCAO] Exception Genérica: $e');
+      developer.log(
+        'Erro inesperado ao reportar obstáculo: $e',
+        error: e,
+        name: 'SupabaseObstacleRepositoryImpl',
+      );
       return Left(ServerFailure('Erro inesperado ao reportar obstáculo: $e'));
     }
   }
 }
+

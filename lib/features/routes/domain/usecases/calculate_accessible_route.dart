@@ -55,7 +55,8 @@ class CalculateAccessibleRouteUseCase {
           obstaclePoint,
           destPoint,
         );
-        if (distToOrigin < 20.0 || distToDest < 20.0) {
+        // Regra de Segurança Safe-Start & End: Ignora obstáculos a menos de 15 metros da origem ou destino
+        if (distToOrigin < 15.0 || distToDest < 15.0) {
           return false;
         }
 

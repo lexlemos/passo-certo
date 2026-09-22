@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:isolate';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:latlong2/latlong.dart';
@@ -90,34 +91,44 @@ class ORSRouteRepositoryImpl implements RouteRepository {
       'https://api.openrouteservice.org/v2/directions/${profile.slug}/geojson',
     );
 
-    // Monta o payload base com as coordenadas [lng, lat] (padrão GeoJSON)
+    // Payload base com coordenadas GeoJSON e enriquecimento extra_info
     final Map<String, dynamic> body = {
       'coordinates': [
         [originLng, originLat],
         [destLng, destLat],
       ],
+      'extra_info': ['surface', 'steepness', 'suitability'],
     };
 
-    // Adiciona polígonos de exclusão para obstáculos bloqueantes
+    final Map<String, dynamic> options = {};
+
+    // Formatação estrita de avoid_polygons no padrão GeoJSON MultiPolygon v2 do ORS
     if (blockingObstacles != null && blockingObstacles.isNotEmpty) {
-      final List<List<List<double>>> avoidPolygons = [];
+      final List<List<List<double>>> avoidPolygonRings = [];
 
       for (final obstacle in blockingObstacles) {
-        avoidPolygons.add(
+        avoidPolygonRings.add(
           GeoUtils.createBoundingBoxPolygon(
             obstacle.latitude,
             obstacle.longitude,
+            radiusInMeters: 10.0,
           ),
         );
       }
 
-      body['options'] = {
-        'avoid_polygons': {
-          'type': 'MultiPolygon',
-          // O formato MultiPolygon exige array de Polygons (onde Polygon = array de rings)
-          'coordinates': avoidPolygons.map((ring) => [ring]).toList(),
-        },
+      // GeoJSON MultiPolygon v2: List<Polygon> onde Polygon = List<Ring> e Ring = List<Point[lon, lat]>
+      // Profundidade estrita de 4 níveis de arrays: [[[[lon, lat], ...]]]]
+      final List<List<List<List<double>>>> multiPolygonCoordinates =
+          avoidPolygonRings.map((ring) => [ring]).toList();
+
+      options['avoid_polygons'] = {
+        'type': 'MultiPolygon',
+        'coordinates': multiPolygonCoordinates,
       };
+    }
+
+    if (options.isNotEmpty) {
+      body['options'] = options;
     }
 
     try {
@@ -133,12 +144,26 @@ class ORSRouteRepositoryImpl implements RouteRepository {
           .timeout(const Duration(seconds: 12));
 
       if (response.statusCode != 200) {
+        developer.log(
+          'Erro HTTP ${response.statusCode} na requisição ORS (${profile.slug}): ${response.body}',
+          name: 'ORSRouteRepository',
+        );
         throw Exception(
           'Erro na requisição ORS: Código ${response.statusCode}',
         );
       }
 
-      return _parseResponse(json.decode(response.body), profile: profile);
+      final responseBody = response.body;
+      return await Isolate.run(() {
+        try {
+          final data = json.decode(responseBody) as Map<String, dynamic>;
+          return _parseResponse(data, profile: profile);
+        } catch (e) {
+          throw FormatException(
+            'Falha ao decodificar GeoJSON do ORS (${profile.slug}): $e',
+          );
+        }
+      });
     } catch (e, stackTrace) {
       developer.log(
         'Erro ao buscar rota ORS para o perfil ${profile.slug}',
@@ -153,7 +178,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
   // ---------------------------------------------------------------------------
   // Parseia o GeoJSON retornado pelo ORS e constrói a NavigationRoute
   // ---------------------------------------------------------------------------
-  NavigationRoute _parseResponse(
+  static NavigationRoute _parseResponse(
     Map<String, dynamic> data, {
     required _OrsProfile profile,
   }) {
@@ -161,11 +186,12 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     double durationSeconds = 0.0;
     List<RouteCoordinate> waypoints = [];
     List<RouteStep> steps = [];
+    Map<String, dynamic>? properties;
 
     // Endpoint /geojson retorna FeatureCollection
     if (data['features'] is List && (data['features'] as List).isNotEmpty) {
       final feature = data['features'][0] as Map<String, dynamic>;
-      final properties = feature['properties'] as Map<String, dynamic>?;
+      properties = feature['properties'] as Map<String, dynamic>?;
 
       // Resumo: distância e duração
       if (properties?['summary'] is Map) {
@@ -239,13 +265,20 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     final distanceKm = '${(distanceMeters / 1000).toStringAsFixed(1)} km';
     final durationMin = '${(durationSeconds / 60).round()} min';
 
+    // Cálculo de pontuação dinâmica de acessibilidade baseado no extra_info retornado
+    final dynamicScore = _calculateDynamicAccessibilityScore(
+      properties,
+      profile,
+      distanceMeters,
+    );
+
     // Metadados específicos de cada perfil
     return switch (profile) {
       _OrsProfile.wheelchair => NavigationRoute(
-        title: 'Rota para Cadeirante',
+        title: 'Rota Acessível',
         estimatedTime: durationMin,
         distance: distanceKm,
-        accessibilityScore: 0.95,
+        accessibilityScore: dynamicScore,
         characteristics: const [
           'ACESSÍVEL PARA CADEIRA DE RODAS',
           'EVITA ESCADAS',
@@ -258,7 +291,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         title: 'Rota a Pé',
         estimatedTime: durationMin,
         distance: distanceKm,
-        accessibilityScore: 0.60,
+        accessibilityScore: dynamicScore,
         characteristics: const ['PEDESTRE SEM RESTRIÇÃO', 'CAMINHO MAIS CURTO'],
         waypoints: waypoints,
         steps: steps,
@@ -266,8 +299,89 @@ class ORSRouteRepositoryImpl implements RouteRepository {
     };
   }
 
+  /// Calcula a pontuação dinâmica de acessibilidade baseada em superfície, inclinação e adequabilidade
+  static double _calculateDynamicAccessibilityScore(
+    Map<String, dynamic>? properties,
+    _OrsProfile profile,
+    double distanceMeters,
+  ) {
+    try {
+      if (properties == null) {
+        return profile == _OrsProfile.wheelchair ? 0.95 : 0.60;
+      }
+
+      final extras = properties['extras'] as Map<String, dynamic>?;
+      if (extras == null || extras.isEmpty) {
+        return profile == _OrsProfile.wheelchair ? 0.92 : 0.60;
+      }
+
+      double penalty = 0.0;
+
+      // 1. Análise de Inclinação (Steepness extra_info)
+      if (extras['steepness'] is Map &&
+          (extras['steepness'] as Map)['summary'] is List) {
+        final summaryList = (extras['steepness'] as Map)['summary'] as List;
+        for (final item in summaryList) {
+          if (item is Map) {
+            final valueCode = (item['value'] as num?)?.toInt() ?? 0;
+            final amountPct = (item['amount'] as num?)?.toDouble() ?? 0.0;
+            final absVal = valueCode.abs();
+
+            // Penaliza inclinações elevadas (código 2 ou maior = >6% de aclive/declive)
+            if (absVal >= 2) {
+              penalty += (absVal * 0.05) * (amountPct / 100.0);
+            }
+          }
+        }
+      }
+
+      // 2. Análise de Superfície (Surface extra_info)
+      if (extras['surface'] is Map &&
+          (extras['surface'] as Map)['summary'] is List) {
+        final summaryList = (extras['surface'] as Map)['summary'] as List;
+        for (final item in summaryList) {
+          if (item is Map) {
+            final valueCode = (item['value'] as num?)?.toInt() ?? 0;
+            final amountPct = (item['amount'] as num?)?.toDouble() ?? 0.0;
+
+            // Códigos de superfície irregular/desfavorável (paralelepípedo, terra, etc.)
+            if (valueCode > 3) {
+              penalty += 0.15 * (amountPct / 100.0);
+            }
+          }
+        }
+      }
+
+      // 3. Análise de Adequabilidade (Suitability extra_info)
+      if (extras['suitability'] is Map &&
+          (extras['suitability'] as Map)['summary'] is List) {
+        final summaryList = (extras['suitability'] as Map)['summary'] as List;
+        for (final item in summaryList) {
+          if (item is Map) {
+            final valueCode = (item['value'] as num?)?.toInt() ?? 1;
+            final amountPct = (item['amount'] as num?)?.toDouble() ?? 0.0;
+
+            if (valueCode >= 3) {
+              penalty += ((valueCode - 2) * 0.08) * (amountPct / 100.0);
+            }
+          }
+        }
+      }
+
+      if (profile == _OrsProfile.wheelchair) {
+        final score = (0.95 - penalty).clamp(0.40, 0.99);
+        return double.parse(score.toStringAsFixed(2));
+      } else {
+        final score = (0.60 - (penalty * 0.5)).clamp(0.30, 0.70);
+        return double.parse(score.toStringAsFixed(2));
+      }
+    } catch (_) {
+      return profile == _OrsProfile.wheelchair ? 0.95 : 0.60;
+    }
+  }
+
   /// Decodificador de Polyline (Google Polyline Algorithm) de alta performance
-  List<RouteCoordinate> _decodePolyline(String encoded) {
+  static List<RouteCoordinate> _decodePolyline(String encoded) {
     final List<RouteCoordinate> poly = [];
     int index = 0;
     final int len = encoded.length;

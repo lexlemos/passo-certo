@@ -14,6 +14,13 @@ class GeolocatorTrackingRepositoryImpl implements LocationTrackingRepository {
   }
 
   @override
+  Stream<ServiceStatus> getServiceStatusStream() {
+    return Geolocator.getServiceStatusStream();
+  }
+
+
+
+  @override
   Future<void> enableWakelock() async {
     try {
       await WakelockPlus.enable();

@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/routes/data/repositories/ors_route_repository_impl.dart';
@@ -8,7 +9,10 @@ import '../../features/routes/domain/repositories/route_repository.dart';
 import '../../features/routes/domain/usecases/get_recommended_route.dart';
 import '../../features/routes/domain/usecases/get_routes.dart';
 import '../../features/routes/domain/usecases/calculate_accessible_route.dart';
+import '../../features/routes/domain/usecases/get_recent_searches.dart';
+import '../../features/routes/domain/usecases/save_recent_search.dart';
 import '../../features/routes/domain/usecases/add_place.dart';
+import '../../features/routes/domain/usecases/delete_place.dart';
 import '../../features/profile/domain/usecases/validate_emergency_contact.dart';
 import '../../features/profile/presentation/bloc/profile_navigation_bloc.dart';
 import '../../features/profile/presentation/bloc/profile_emergency_bloc.dart';
@@ -23,9 +27,13 @@ import '../../features/routes/presentation/bloc/active_navigation_bloc.dart';
 import '../../features/routes/domain/usecases/get_current_location_place.dart';
 import '../../features/routes/domain/repositories/location_tracking_repository.dart';
 import '../../features/routes/data/repositories/geolocator_tracking_repository_impl.dart';
+import '../../features/routes/data/datasources/recent_search_local_data_source.dart';
+import '../../features/routes/domain/repositories/recent_search_repository.dart';
+import '../../features/routes/data/repositories/recent_search_repository_impl.dart';
 
 import '../../features/community/data/repositories/supabase_obstacle_repository_impl.dart';
 import '../../features/community/domain/repositories/obstacle_repository.dart';
+import '../../features/community/domain/usecases/delete_obstacle.dart';
 import '../../features/community/domain/usecases/get_obstacles.dart';
 import '../../features/community/domain/usecases/report_obstacle.dart';
 import '../../features/community/presentation/bloc/obstacle_bloc.dart';
@@ -38,6 +46,9 @@ final sl = GetIt.instance;
 
 /// Inicializa as dependências do projeto.
 Future<void> init() async {
+  final sharedPreferences = await SharedPreferences.getInstance();
+  sl.registerLazySingleton(() => sharedPreferences);
+
   // --- Presentation Layer (BLoCs) ---
   // Registra instâncias do tipo Factory, para criar uma nova instância a cada solicitação.
   sl.registerFactory(
@@ -45,6 +56,9 @@ Future<void> init() async {
       calculateAccessibleRouteUseCase: sl(),
       profileNavigationBloc: sl(),
       getCurrentLocationPlaceUseCase: sl(),
+      getObstaclesUseCase: sl(),
+      saveRecentSearchUseCase: sl(),
+      getRecentSearchesUseCase: sl(),
     ),
   );
   sl.registerLazySingleton(() => ProfileNavigationBloc());
@@ -52,9 +66,18 @@ Future<void> init() async {
     () => ProfileEmergencyBloc(validateEmergencyContactUseCase: sl()),
   );
   sl.registerFactory(
-    () => ObstacleBloc(getObstaclesUseCase: sl(), reportObstacleUseCase: sl()),
+    () => ObstacleBloc(
+      getObstaclesUseCase: sl(),
+      reportObstacleUseCase: sl(),
+      deleteObstacleUseCase: sl(),
+    ),
   );
-  sl.registerFactory(() => AddPlaceBloc(addPlaceUseCase: sl()));
+  sl.registerFactory(
+    () => AddPlaceBloc(
+      addPlaceUseCase: sl(),
+      deletePlaceUseCase: sl(),
+    ),
+  );
   sl.registerFactory(() => CommunityBloc());
   sl.registerFactory(
     () => ActiveNavigationBloc(
@@ -72,6 +95,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => ValidateEmergencyContactUseCase());
   sl.registerLazySingleton(() => GetObstaclesUseCase(sl()));
   sl.registerLazySingleton(() => ReportObstacleUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteObstacleUseCase(sl()));
   sl.registerLazySingleton(() => CalculateAccessibleRouteUseCase(sl(), sl()));
   sl.registerLazySingleton(
     () =>
@@ -79,6 +103,9 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(() => GetCurrentLocationPlaceUseCase(sl(), sl()));
   sl.registerLazySingleton(() => AddPlaceUseCase(sl()));
+  sl.registerLazySingleton(() => DeletePlaceUseCase(sl()));
+  sl.registerLazySingleton(() => GetRecentSearchesUseCase(sl()));
+  sl.registerLazySingleton(() => SaveRecentSearchUseCase(sl()));
 
   // --- Data Layer (External) ---
   // O SupabaseClient é um singleton já inicializado no main(); apenas o referenciamos aqui.
@@ -103,5 +130,11 @@ Future<void> init() async {
   );
   sl.registerLazySingleton<PlaceRepository>(
     () => SupabasePlaceRepositoryImpl(supabaseClient: sl()),
+  );
+  sl.registerLazySingleton<RecentSearchLocalDataSource>(
+    () => RecentSearchLocalDataSourceImpl(sharedPreferences: sl()),
+  );
+  sl.registerLazySingleton<RecentSearchRepository>(
+    () => RecentSearchRepositoryImpl(localDataSource: sl()),
   );
 }

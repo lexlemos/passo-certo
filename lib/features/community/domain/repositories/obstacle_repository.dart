@@ -5,4 +5,5 @@ import '../entities/obstacle.dart';
 abstract class ObstacleRepository {
   Future<Either<Failure, List<Obstacle>>> getObstacles();
   Future<Either<Failure, void>> reportObstacle(Obstacle obstacle);
+  Future<Either<Failure, void>> deleteObstacle(String obstacleId);
 }
