@@ -1,14 +1,13 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/base_button.dart';
-import '../../../../core/widgets/base_card.dart';
 import '../bloc/route_planning_bloc.dart';
+import '../bloc/active_navigation_bloc.dart';
+import '../widgets/active_navigation_panel.dart';
+import '../widgets/route_search_card.dart';
+import '../widgets/route_list_view.dart';
+import '../widgets/route_map_view.dart';
 
 class RoutePlanningPage extends StatefulWidget {
   const RoutePlanningPage({super.key});
@@ -20,13 +19,16 @@ class RoutePlanningPage extends StatefulWidget {
 class _RoutePlanningPageState extends State<RoutePlanningPage> {
   late final TextEditingController _originController;
   late final TextEditingController _destinationController;
+  bool _isSearchExpanded = false;
 
   @override
   void initState() {
     super.initState();
     final bloc = context.read<RoutePlanningBloc>();
     _originController = TextEditingController(text: bloc.state.originText);
-    _destinationController = TextEditingController(text: bloc.state.destinationText);
+    _destinationController = TextEditingController(
+      text: bloc.state.destinationText,
+    );
   }
 
   @override
@@ -38,91 +40,263 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: BlocListener<RoutePlanningBloc, RoutePlanningState>(
-        listenWhen: (prev, curr) =>
-            prev.originText != curr.originText ||
-            prev.destinationText != curr.destinationText,
-        listener: (context, state) {
-          if (_originController.text != state.originText) {
-            _originController.text = state.originText;
-          }
-          if (_destinationController.text != state.destinationText) {
-            _destinationController.text = state.destinationText;
-          }
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox.expand(
+        child: BlocListener<RoutePlanningBloc, RoutePlanningState>(
+          listenWhen: (prev, curr) =>
+              prev.originText != curr.originText ||
+              prev.destinationText != curr.destinationText ||
+              prev.errorMessage != curr.errorMessage,
+          listener: (context, state) {
+            if (_originController.text != state.originText) {
+              _originController.text = state.originText;
+            }
+            if (_destinationController.text != state.destinationText) {
+              _destinationController.text = state.destinationText;
+            }
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.errorMessage!),
+                  backgroundColor: AppTheme.emergencyRed,
+                ),
+              );
+            }
+          },
+          child: Stack(
             children: [
-              const RoutePlanningHeader(),
-              const SizedBox(height: 24),
-              RouteSearchCard(
-                originController: _originController,
-                destinationController: _destinationController,
+              // --------------------------------------------------------------
+              // Camada 1: Mapa Interativo Edge-to-Edge (100% da Tela)
+              // --------------------------------------------------------------
+              const Positioned.fill(
+                child: RouteMapSection(),
               ),
-              const SizedBox(height: 32),
-              const RoutesHeader(),
-              const SizedBox(height: 16),
-              
-              // Lista de Rotas Otimizada
-              BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
-                buildWhen: (previous, current) =>
-                    previous.selectedRouteIndex != current.selectedRouteIndex ||
-                    !listEquals(previous.routes, current.routes) ||
-                    previous.recommendedRoute != current.recommendedRoute,
-                builder: (context, state) {
-                  return Column(
-                    children: List.generate(state.routes.length, (index) {
-                      final route = state.routes[index];
 
-                      return RouteOptionCard(
-                        title: route.title,
-                        time: route.estimatedTime,
-                        distance: route.distance,
-                        isRecommended: route == state.recommendedRoute,
-                        accessibilityScore: route.accessibilityScore,
-                        tags: route.characteristics,
-                        isSelected: state.selectedRouteIndex == index,
-                        onTap: () => context
-                            .read<RoutePlanningBloc>()
-                            .add(SelectRouteEvent(routeIndex: index)),
+              // --------------------------------------------------------------
+              // Camada 2: HUD Flutuante no Topo (Busca de Origem e Destino)
+              // --------------------------------------------------------------
+              Positioned(
+                top: 12,
+                left: 16,
+                right: 16,
+                child: BlocBuilder<ActiveNavigationBloc, ActiveNavigationState>(
+                  builder: (context, activeState) {
+                    if (activeState.isActive) {
+                      return const SizedBox.shrink();
+                    }
+
+                    if (!_isSearchExpanded) {
+                      return Semantics(
+                        button: true,
+                        label: 'Abrir busca de rotas e endereços',
+                        child: Material(
+                          color: Colors.transparent,
+                          elevation: 6,
+                          borderRadius: BorderRadius.circular(28),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _isSearchExpanded = true;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(28),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(
+                                  color: AppTheme.mintGreen.withValues(alpha: 0.5),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.search_rounded,
+                                    color: AppTheme.mintGreen,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _destinationController.text.isNotEmpty
+                                          ? _destinationController.text
+                                          : 'Para onde vamos? (Buscar rota)',
+                                      style: TextStyle(
+                                        color: _destinationController.text.isNotEmpty
+                                            ? AppTheme.spaceBlue
+                                            : AppTheme.textMuted,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: AppTheme.spaceBlue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.tune,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       );
-                    }),
-                  );
-                },
+                    }
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.spaceBlue,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.map,
+                                        color: AppTheme.mintGreen,
+                                        size: 16,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Passo Certo — Busca',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Semantics(
+                                  button: true,
+                                  label: 'Recolher painel de busca',
+                                  child: IconButton(
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: AppTheme.softGreyBg,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.keyboard_arrow_up,
+                                      color: AppTheme.spaceBlue,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isSearchExpanded = false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          BlocProvider.value(
+                            value: context.read<RoutePlanningBloc>(),
+                            child: RouteSearchCard(
+                              originController: _originController,
+                              destinationController: _destinationController,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-              
-              const SizedBox(height: 24),
-              const RouteMapSection(),
-              const SizedBox(height: 24),
+
+              // --------------------------------------------------------------
+              // Camada 3: Painel Flutuante de Rotas Disponíveis (Grid 2 Colunas)
+              // --------------------------------------------------------------
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 80,
+                child: BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
+                  builder: (context, planningState) {
+                    final activeState =
+                        context.watch<ActiveNavigationBloc>().state;
+                    if (planningState.routes.isEmpty || activeState.isActive) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Container(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.35,
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RoutesHeader(),
+                            SizedBox(height: 8),
+                            RouteListView(),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // --------------------------------------------------------------
+              // Camada 4: Painel de Navegação Ativa
+              // --------------------------------------------------------------
+              const ActiveNavigationPanel(),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class RoutePlanningHeader extends StatelessWidget {
-  const RoutePlanningHeader({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Semantics(
-      header: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Para onde vamos?', style: theme.textTheme.headlineLarge),
-          const SizedBox(height: 4),
-          Text(
-            'Planeje seu trajeto com segurança e autonomia.',
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
       ),
     );
   }
@@ -138,558 +312,16 @@ class RoutesHeader extends StatelessWidget {
       header: true,
       child: Row(
         children: [
-          const Icon(Icons.route, color: AppTheme.spaceBlue),
-          const SizedBox(width: 8),
-          Text('Rotas Disponíveis', style: theme.textTheme.titleLarge),
+          const Icon(Icons.route, color: AppTheme.spaceBlue, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            'Rotas Disponíveis',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
-    );
-  }
-}
-
-class RouteSearchCard extends StatelessWidget {
-  final TextEditingController originController;
-  final TextEditingController destinationController;
-
-  const RouteSearchCard({
-    super.key,
-    required this.originController,
-    required this.destinationController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
-      buildWhen: (previous, current) =>
-          previous.selectedFilter != current.selectedFilter,
-      builder: (context, state) {
-        return BaseCard(
-          semanticLabel: "Formulário de busca de rotas",
-          child: Column(
-            children: [
-              Stack(
-                alignment: Alignment.centerRight,
-                children: [
-                  Column(
-                    children: [
-                      RouteTextField(
-                        hint: 'Sua localização atual',
-                        label: 'Origem',
-                        icon: Icons.my_location,
-                        iconColor: AppTheme.spaceBlue,
-                        controller: originController,
-                        suffix: const SizedBox(width: 48),
-                      ),
-                      const SizedBox(height: 12),
-                      RouteTextField(
-                        hint: 'Para onde quer ir?',
-                        label: 'Destino',
-                        icon: Icons.location_on,
-                        iconColor: AppTheme.mintGreen,
-                        controller: destinationController,
-                        suffix: const SizedBox(width: 48),
-                      ),
-                    ],
-                  ),
-                  Positioned(
-                    right: 16,
-                    child: Semantics(
-                      button: true,
-                      label: "Inverter origem e destino",
-                      child: FloatingActionButton.small(
-                        onPressed: () => context.read<RoutePlanningBloc>().add(
-                              SwapLocationsEvent(
-                                originText: originController.text,
-                                destinationText: destinationController.text,
-                              ),
-                            ),
-                        backgroundColor: theme.scaffoldBackgroundColor,
-                        elevation: 2,
-                        child: const Icon(Icons.swap_vert, color: AppTheme.spaceBlue),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _FilterChip(
-                    label: 'Totalmente Acessível',
-                    icon: Icons.accessible,
-                    isSelected: state.selectedFilter == 'accessible',
-                    filterValue: 'accessible',
-                  ),
-                  _FilterChip(
-                    label: 'Mais Rápida',
-                    icon: Icons.timer,
-                    isSelected: state.selectedFilter == 'fastest',
-                    filterValue: 'fastest',
-                  ),
-                  _FilterChip(
-                    label: 'Mais Arborizada',
-                    icon: Icons.park,
-                    isSelected: state.selectedFilter == 'treed',
-                    filterValue: 'treed',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              BaseButton(
-                label: 'Buscar Rotas',
-                semanticLabel: 'Botão. Iniciar busca pelas melhores rotas.',
-                icon: const Icon(Icons.search, color: Colors.white),
-                onPressed: () => context.read<RoutePlanningBloc>().add(
-                      SearchRoutesEvent(
-                        originText: originController.text,
-                        destinationText: destinationController.text,
-                      ),
-                    ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class RouteTextField extends StatelessWidget {
-  final String hint;
-  final String label;
-  final IconData icon;
-  final Color iconColor;
-  final TextEditingController? controller;
-  final Widget? suffix;
-
-  const RouteTextField({
-    super.key,
-    required this.hint,
-    required this.label,
-    required this.icon,
-    required this.iconColor,
-    this.controller,
-    this.suffix,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, color: iconColor),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: AppTheme.softGreyBg,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final String filterValue;
-
-  const _FilterChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.filterValue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      avatar: Icon(
-        icon,
-        size: 18,
-        color: isSelected ? AppTheme.mintGreen : AppTheme.textMuted,
-      ),
-      selected: isSelected,
-      selectedColor: AppTheme.mintGreen.withValues(alpha: 0.1),
-      backgroundColor: AppTheme.softGreyBg,
-      labelStyle: TextStyle(
-        color: isSelected ? AppTheme.mintGreen : AppTheme.textMuted,
-        fontWeight: FontWeight.bold,
-      ),
-      onSelected: (_) => context.read<RoutePlanningBloc>().add(SelectFilterEvent(filter: filterValue)),
-    );
-  }
-}
-
-class RouteOptionCard extends StatelessWidget {
-  final String title;
-  final String time;
-  final String distance;
-  final bool isRecommended;
-  final double accessibilityScore;
-  final List<String> tags;
-  final VoidCallback onTap;
-  final bool isSelected;
-
-  const RouteOptionCard({
-    super.key,
-    required this.title,
-    required this.time,
-    required this.distance,
-    required this.isRecommended,
-    required this.accessibilityScore,
-    required this.tags,
-    required this.onTap,
-    this.isSelected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isHighAccessibility = accessibilityScore >= 0.8;
-    final accPercentage = (accessibilityScore * 100).toStringAsFixed(0);
-    final accLevel = isHighAccessibility ? 'Alto ($accPercentage%)' : 'Médio ($accPercentage%)';
-
-    return BaseCard(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.zero,
-      semanticLabel:
-          "Rota $title. Tempo estimado $time. Distância $distance. Nível de acessibilidade $accLevel. Toque duas vezes para selecionar.",
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppTheme.mintGreen : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isRecommended) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          margin: const EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.mintGreen,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Recomendada',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                      Text(
-                        title,
-                        style: theme.textTheme.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      time,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.mintGreen,
-                      ),
-                    ),
-                    Text(distance, style: theme.textTheme.bodyMedium),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: tags
-                  .map((tag) => Chip(
-                        label: Text(
-                          tag,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        backgroundColor: AppTheme.softGreyBg,
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Acessibilidade: $accLevel',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 4),
-            LinearProgressIndicator(
-              value: accessibilityScore,
-              backgroundColor: AppTheme.softGreyBg,
-              color: isHighAccessibility ? AppTheme.mintGreen : Colors.orange,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class RouteMapSection extends StatefulWidget {
-  const RouteMapSection({super.key});
-
-  @override
-  State<RouteMapSection> createState() => _RouteMapSectionState();
-}
-
-enum _LocationPermissionStatus { checking, granted, denied }
-
-class _RouteMapSectionState extends State<RouteMapSection> {
-  GoogleMapController? _mapController;
-  _LocationPermissionStatus _permissionStatus = _LocationPermissionStatus.checking;
-
-  /// Marcadores estáticos declarados como final — inicializados uma única vez.
-  static final Set<Marker> _staticMarkers = {
-    const Marker(
-      markerId: MarkerId('origin'),
-      position: LatLng(-10.9472, -37.0731),
-      infoWindow: InfoWindow(title: 'Origem (CCET UFS)'),
-    ),
-    const Marker(
-      markerId: MarkerId('destination'),
-      position: LatLng(-10.9350, -37.0650),
-      infoWindow: InfoWindow(title: 'Destino (Terminal D.I.A.)'),
-    ),
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAndRequestLocationPermission();
-  }
-
-  /// Verifica e, se necessário, solicita permissão de localização.
-  /// Atualiza [_permissionStatus] para controlar qual UI exibir.
-  Future<void> _checkAndRequestLocationPermission() async {
-    var status = await Permission.locationWhenInUse.status;
-
-    if (status.isGranted) {
-      if (mounted) setState(() => _permissionStatus = _LocationPermissionStatus.granted);
-      return;
-    }
-
-    // Solicita ao usuário (exibe o diálogo do SO apenas na primeira vez)
-    status = await Permission.locationWhenInUse.request();
-
-    if (!mounted) return;
-    setState(() {
-      _permissionStatus = status.isGranted
-          ? _LocationPermissionStatus.granted
-          : _LocationPermissionStatus.denied;
-    });
-  }
-
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
-      buildWhen: (previous, current) =>
-          previous.routes != current.routes ||
-          previous.selectedRouteIndex != current.selectedRouteIndex,
-      builder: (context, state) {
-        return Semantics(
-          label: "Mapa interativo exibindo o trajeto selecionado. Nível de acessibilidade codificado por cores no mapa.",
-          child: Container(
-            height: 400,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.mintGreen.withValues(alpha: 0.5)),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: _buildMapContent(state),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMapContent(RoutePlanningState state) {
-    switch (_permissionStatus) {
-      case _LocationPermissionStatus.checking:
-        return const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Verificando permissão de localização...'),
-            ],
-          ),
-        );
-
-      case _LocationPermissionStatus.denied:
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.location_off, size: 48, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text(
-                  'Permissão de localização necessária',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Para exibir sua posição no mapa, permita o acesso à localização nas configurações.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    // Abre as configurações do app se a permissão foi negada permanentemente
-                    final opened = await openAppSettings();
-                    if (!opened && mounted) {
-                      _checkAndRequestLocationPermission();
-                    }
-                  },
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Abrir Configurações'),
-                ),
-              ],
-            ),
-          ),
-        );
-
-      case _LocationPermissionStatus.granted:
-        final polylines = state.routes.asMap().entries.map((entry) {
-          final index = entry.key;
-          final route = entry.value;
-          final isSelected = index == state.selectedRouteIndex;
-          final isRec = route.accessibilityScore >= 0.8;
-          final latLngWaypoints = route.waypoints
-              .map((coord) => LatLng(coord.latitude, coord.longitude))
-              .toList();
-          return Polyline(
-            polylineId: PolylineId(route.title),
-            color: isSelected
-                ? (isRec ? AppTheme.mintGreen : Colors.orange)
-                : (isRec
-                    ? AppTheme.mintGreen.withValues(alpha: 0.4)
-                    : Colors.orange.withValues(alpha: 0.4)),
-            width: isSelected ? 8 : 4,
-            points: latLngWaypoints,
-          );
-        }).toSet();
-
-        return Stack(
-          children: [
-            GoogleMap(
-              initialCameraPosition: const CameraPosition(
-                target: LatLng(-10.9472, -37.0731),
-                zoom: 15,
-              ),
-              // CORREÇÃO BUG-07: sem setState — o controller não é exibido na UI
-              onMapCreated: (controller) => _mapController = controller,
-              myLocationEnabled: true,
-              zoomControlsEnabled: false,
-              markers: _staticMarkers,
-              polylines: polylines,
-              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                Factory<OneSequenceGestureRecognizer>(
-                  () => EagerGestureRecognizer(),
-                ),
-              },
-            ),
-            const Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: MapLegend(),
-            ),
-          ],
-        );
-    }
-  }
-}
-
-class MapLegend extends StatelessWidget {
-  const MapLegend({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const BaseCard(
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _LegendItem(color: AppTheme.mintGreen, label: 'Boa'),
-          _LegendItem(color: Colors.orange, label: 'Regular'),
-          _LegendItem(color: AppTheme.emergencyRed, label: 'Atenção'),
-        ],
-      ),
-    );
-  }
-}
-
-class _LegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _LegendItem({
-    required this.color,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(backgroundColor: color, radius: 6),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-      ],
     );
   }
 }

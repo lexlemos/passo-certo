@@ -5,12 +5,17 @@ import 'package:go_router/go_router.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/routes/presentation/pages/route_planning_page.dart';
 import '../../features/routes/presentation/bloc/route_planning_bloc.dart';
+import '../../features/routes/presentation/bloc/active_navigation_bloc.dart';
+import '../../features/routes/presentation/bloc/add_place_bloc.dart';
 import '../../features/community/presentation/pages/community_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../widgets/main_navigation_shell.dart';
 import '../di/injection_container.dart' as di;
+import '../../features/community/presentation/bloc/community_bloc.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -33,8 +38,18 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/routes',
-              builder: (context, state) => BlocProvider<RoutePlanningBloc>(
-                create: (context) => di.sl<RoutePlanningBloc>(),
+              builder: (context, state) => MultiBlocProvider(
+                providers: [
+                  BlocProvider<RoutePlanningBloc>(
+                    create: (context) => di.sl<RoutePlanningBloc>(),
+                  ),
+                  BlocProvider<ActiveNavigationBloc>(
+                    create: (context) => di.sl<ActiveNavigationBloc>(),
+                  ),
+                  BlocProvider<AddPlaceBloc>(
+                    create: (context) => di.sl<AddPlaceBloc>(),
+                  ),
+                ],
                 child: const RoutePlanningPage(),
               ),
             ),
@@ -45,7 +60,10 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/community',
-              builder: (context, state) => const CommunityPage(),
+              builder: (context, state) => BlocProvider<CommunityBloc>(
+                create: (_) => di.sl<CommunityBloc>(),
+                child: const CommunityPage(),
+              ),
             ),
           ],
         ),

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_card.dart';
+import '../widgets/emergency_dialog_sheet.dart';
+import '../../../community/presentation/widgets/report_obstacle_bottom_sheet.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -16,15 +20,9 @@ class HomePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Seção de Boas-vindas (Topo)
-          Text(
-            'Olá, Maria!',
-            style: theme.textTheme.headlineLarge,
-          ),
+          Text('Olá, Maria!', style: theme.textTheme.headlineLarge),
           const SizedBox(height: 4),
-          Text(
-            'Onde vamos hoje?',
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text('Onde vamos hoje?', style: theme.textTheme.bodyMedium),
           const SizedBox(height: 24),
 
           // 2. Card Principal de Rota
@@ -32,15 +30,13 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             isButton: true,
             onTapHint: 'Iniciar navegação segura passo a passo',
-            semanticLabel: 'Botão Iniciar Rota. Toque para iniciar uma navegação segura passo a passo',
+            semanticLabel:
+                'Botão Iniciar Rota. Toque para iniciar uma navegação segura passo a passo',
             onTap: () {
-              // Ação de navegação (mocked)
+              context.go('/routes');
             },
             gradient: const LinearGradient(
-              colors: [
-                AppTheme.mintGreen,
-                AppColors.darkTeal,
-              ],
+              colors: [AppTheme.mintGreen, AppColors.darkTeal],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -85,86 +81,44 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // 3. Seção de Ações Rápidas (Linha com 2 cards menores usando Expanded)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: BaseCard(
-                  margin: EdgeInsets.zero,
-                  padding: const EdgeInsets.all(16),
-                  isButton: true,
-                  onTapHint: 'Iniciar navegação dentro de prédios e locais fechados',
-                  semanticLabel: 'Botão Navegação Interna',
-                  onTap: () {
-                    // Ação de navegação interna (mocked)
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.spaceBlue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.business,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Navegação Interna',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+          // 3. Card de Ação Rápida: Reportar Obstáculo
+          BaseCard(
+            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.all(16),
+            isButton: true,
+            onTapHint: 'Reportar problemas ou barreiras na via de tráfego',
+            semanticLabel: 'Botão Reportar Obstáculo',
+            onTap: () {
+              // Abre o bottom sheet de reporte com uma localização simulada padrão (próximo à UFS)
+              ReportObstacleBottomSheet.show(
+                context,
+                const LatLng(-10.9472, -37.0731),
+              );
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: AppColors.lightBlueBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.alertBlue,
+                    size: 22,
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: BaseCard(
-                  margin: EdgeInsets.zero,
-                  padding: const EdgeInsets.all(16),
-                  isButton: true,
-                  onTapHint: 'Reportar problemas ou barreiras na via de tráfego',
-                  semanticLabel: 'Botão Reportar Obstáculo',
-                  onTap: () {
-                    // Ação de reportar obstáculo (mocked)
-                  },
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
-                          color: AppColors.lightBlueBg,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: AppColors.alertBlue,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Reportar Obstáculo',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                const SizedBox(width: 12),
+                Text(
+                  'Reportar Obstáculo',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -172,11 +126,10 @@ class HomePage extends StatelessWidget {
           BaseCard(
             backgroundColor: AppTheme.emergencyRed,
             isButton: true,
-            onTapHint: 'Efetuar ligação telefônica de emergência para SAMU ou DIASE imediatamente',
+            onTapHint:
+                'Efetuar ligação telefônica de emergência para SAMU ou DIASE imediatamente',
             semanticLabel: 'Botão de Emergência. Ligar para SAMU ou DIASE',
-            onTap: () {
-              // Ação de emergência (mocked)
-            },
+            onTap: () => EmergencyDialogSheet.show(context),
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
@@ -216,11 +169,7 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
-                  Icons.phone,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                const Icon(Icons.phone, color: Colors.white, size: 24),
               ],
             ),
           ),

@@ -5,11 +5,7 @@ class NavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  const NavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const NavBar({super.key, required this.currentIndex, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +26,11 @@ class NavBar extends StatelessWidget {
         currentIndex: currentIndex,
         onTap: onTap,
         backgroundColor: navTheme.backgroundColor ?? theme.colorScheme.surface,
-        selectedItemColor: navTheme.selectedItemColor ?? theme.colorScheme.primary,
-        unselectedItemColor: navTheme.unselectedItemColor ?? theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        selectedItemColor:
+            navTheme.selectedItemColor ?? theme.colorScheme.primary,
+        unselectedItemColor:
+            navTheme.unselectedItemColor ??
+            theme.colorScheme.onSurface.withValues(alpha: 0.6),
         selectedLabelStyle: navTheme.selectedLabelStyle,
         unselectedLabelStyle: navTheme.unselectedLabelStyle,
         type: navTheme.type ?? BottomNavigationBarType.fixed,
