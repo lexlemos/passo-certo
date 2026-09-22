@@ -31,11 +31,7 @@ class MapActionButtonsHUD extends StatelessWidget {
               heroTag: 'add_place_btn_hud',
               backgroundColor: Colors.blue,
               onPressed: onAddPlacePressed,
-              child: const Icon(
-                Icons.business,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.business, color: Colors.white, size: 20),
             ),
           ),
           const SizedBox(height: 16),

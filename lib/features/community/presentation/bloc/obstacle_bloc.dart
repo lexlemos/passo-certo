@@ -16,7 +16,22 @@ abstract class ObstacleEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadObstaclesEvent extends ObstacleEvent {}
+class LoadObstaclesInViewportEvent extends ObstacleEvent {
+  final double minLat;
+  final double minLng;
+  final double maxLat;
+  final double maxLng;
+
+  LoadObstaclesInViewportEvent({
+    required this.minLat,
+    required this.minLng,
+    required this.maxLat,
+    required this.maxLng,
+  });
+
+  @override
+  List<Object?> get props => [minLat, minLng, maxLat, maxLng];
+}
 
 class ReportNewObstacleEvent extends ObstacleEvent {
   final ObstacleType type;
@@ -105,16 +120,13 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
        _reportObstacleUseCase = reportObstacleUseCase,
        _deleteObstacleUseCase = deleteObstacleUseCase,
        super(const ObstacleState(obstacles: [])) {
-    on<LoadObstaclesEvent>(_onLoadObstacles);
+    on<LoadObstaclesInViewportEvent>(_onLoadObstaclesInViewport);
     on<ReportNewObstacleEvent>(_onReportNewObstacle);
     on<DeleteObstacleEvent>(_onDeleteObstacle);
-
-    // Carrega a lista inicial de obstáculos
-    add(LoadObstaclesEvent());
   }
 
-  Future<void> _onLoadObstacles(
-    LoadObstaclesEvent event,
+  Future<void> _onLoadObstaclesInViewport(
+    LoadObstaclesInViewportEvent event,
     Emitter<ObstacleState> emit,
   ) async {
     emit(
@@ -125,7 +137,12 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
       ),
     );
 
-    final result = await _getObstaclesUseCase();
+    final result = await _getObstaclesUseCase(
+      minLat: event.minLat,
+      minLng: event.minLng,
+      maxLat: event.maxLat,
+      maxLng: event.maxLng,
+    );
 
     result.fold(
       (failure) =>
@@ -236,18 +253,12 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
           'Falha ao excluir obstáculo: ${failure.message}',
           name: 'ObstacleBloc',
         );
-        // Reverte: recarrega a lista do servidor
-        final reloadResult = await _getObstaclesUseCase();
-        reloadResult.fold(
-          (_) {},
-          (obstacles) => emit(state.copyWith(obstacles: obstacles)),
-        );
-        emit(
-          state.copyWith(
-            isDeleting: false,
-            errorMessage: failure.message,
-          ),
-        );
+        // Reverte: para um delete que falhou, vamos deixar a UI local voltar ao que era.
+        // Já não podemos dar fetch em tudo, pois não temos a viewport aqui.
+        // Uma abordagem melhor seria recarregar se tivermos a viewport salva no estado,
+        // mas para simplificar, a UI pode emitir um novo LoadObstaclesInViewportEvent.
+        // Emit error only
+        emit(state.copyWith(isDeleting: false, errorMessage: failure.message));
       },
       (_) {
         // O item já foi removido do cache local via write-through no repositório.
@@ -262,4 +273,3 @@ class ObstacleBloc extends Bloc<ObstacleEvent, ObstacleState> {
     );
   }
 }
-

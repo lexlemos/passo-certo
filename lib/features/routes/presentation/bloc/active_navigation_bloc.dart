@@ -6,11 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 
 import '../../../../core/config/app_constants.dart';
 import '../../../community/domain/entities/obstacle.dart';
 import '../../../community/domain/usecases/get_obstacles.dart';
 import '../../domain/entities/navigation_route.dart';
+import '../../domain/entities/navigation_preferences.dart';
 import '../../domain/repositories/location_tracking_repository.dart';
 import '../../domain/services/voice_navigation_service.dart';
 import '../../domain/usecases/calculate_accessible_route.dart';
@@ -149,6 +151,7 @@ class ActiveNavigationBloc
   final LocationTrackingRepository _locationTrackingRepository;
   final CalculateAccessibleRouteUseCase _calculateAccessibleRouteUseCase;
   final GetObstaclesUseCase _getObstaclesUseCase;
+  final NavigationPreferencesReader _preferencesReader;
 
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
@@ -162,10 +165,12 @@ class ActiveNavigationBloc
     required LocationTrackingRepository locationTrackingRepository,
     required CalculateAccessibleRouteUseCase calculateAccessibleRouteUseCase,
     required GetObstaclesUseCase getObstaclesUseCase,
+    required NavigationPreferencesReader preferencesReader,
   }) : _voiceService = voiceService,
        _locationTrackingRepository = locationTrackingRepository,
        _calculateAccessibleRouteUseCase = calculateAccessibleRouteUseCase,
        _getObstaclesUseCase = getObstaclesUseCase,
+       _preferencesReader = preferencesReader,
        super(const ActiveNavigationState(isActive: false)) {
     try {
       WidgetsBinding.instance.addObserver(this);
@@ -179,15 +184,19 @@ class ActiveNavigationBloc
 
   void _registerEventHandlers() {
     on<StartNavigationEvent>(_onStartNavigation);
-    on<LocationUpdatedEvent>(_onLocationUpdated);
+    on<LocationUpdatedEvent>(_onLocationUpdated, transformer: droppable());
     on<StopNavigationEvent>(_onStopNavigation);
-    on<RecalculateRouteTriggeredEvent>(_onRecalculateRouteTriggered);
+    on<RecalculateRouteTriggeredEvent>(
+      _onRecalculateRouteTriggered,
+      transformer: droppable(),
+    );
     on<GpsServiceStatusChangedEvent>(_onGpsServiceStatusChanged);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _voiceService.stop();
       _offRouteTimer?.cancel();
       _offRouteTimer = null;
@@ -209,7 +218,6 @@ class ActiveNavigationBloc
     StartNavigationEvent event,
     Emitter<ActiveNavigationState> emit,
   ) async {
-    // CORREÇÃO DE STALE STATE: Limpa e cancela completamente o estado da navegação anterior
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     await _serviceStatusSubscription?.cancel();
@@ -225,14 +233,29 @@ class ActiveNavigationBloc
         ? event.route.steps.first
         : null;
 
-    // Busca os obstáculos mais recentes no momento que a rota inicia
-    final obstaclesResult = await _getObstaclesUseCase();
+    double minLat = event.route.waypoints.first.latitude;
+    double maxLat = minLat;
+    double minLng = event.route.waypoints.first.longitude;
+    double maxLng = minLng;
+    for (var point in event.route.waypoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    final obstaclesResult = await _getObstaclesUseCase(
+      minLat: minLat - 0.05,
+      maxLat: maxLat + 0.05,
+      minLng: minLng - 0.05,
+      maxLng: maxLng + 0.05,
+    );
+
     final activeObstacles = obstaclesResult.fold(
       (_) => <Obstacle>[],
       (obstacles) => obstacles,
     );
 
-    // Reseta o estado emitindo a nova rota recebida no evento
     emit(
       ActiveNavigationState(
         isActive: true,
@@ -259,19 +282,17 @@ class ActiveNavigationBloc
       await _voiceService.speak("Iniciando navegação guiada.");
     }
 
-    // Escuta o status do serviço de GPS (ativado/desativado pelo sistema)
     _serviceStatusSubscription = _locationTrackingRepository
         .getServiceStatusStream()
         .listen((status) {
-      add(GpsServiceStatusChangedEvent(status));
-    });
+          add(GpsServiceStatusChangedEvent(status));
+        });
 
     _positionSubscription = _locationTrackingRepository
         .getNavigationPositionStream()
         .listen(
           (Position position) {
             final now = DateTime.now();
-            // Otimização de GPS: Processa posição apenas a cada 3 segundos
             if (_lastLocationTime != null &&
                 now.difference(_lastLocationTime!).inSeconds <
                     AppConstants.gpsThrottleSeconds) {
@@ -313,46 +334,88 @@ class ActiveNavigationBloc
     final userPos = LatLng(event.position.latitude, event.position.longitude);
     final distanceCalc = const Distance();
 
-    // 0. Progresso em Tempo Real e Verificação de Chegada
-    double remainingMeters = 0.0;
-    int remainingMinutes = 0;
+    // 0. Progresso
+    final (remainingMeters, remainingMinutes) = _calculateProgress(
+      route,
+      userPos,
+      distanceCalc,
+    );
 
-    if (route.waypoints.isNotEmpty) {
-      final destCoord = route.waypoints.last;
-      final destLatLng = LatLng(destCoord.latitude, destCoord.longitude);
-      remainingMeters = distanceCalc.as(
-        LengthUnit.Meter,
-        userPos,
-        destLatLng,
-      ).toDouble();
-
-      // Velocidade estimada de caminhada (~1.1 m/s = ~66 m/min)
-      remainingMinutes = (remainingMeters / 66.0).ceil();
-
-      // VERIFICAÇÃO DE CHEGADA AO DESTINO (< 15 metros)
-      if (remainingMeters < 15.0) {
-        unawaited(HapticFeedback.mediumImpact());
-        await _voiceService.speak(
-          "Você chegou ao seu destino! Navegação concluída.",
-        );
-
-        emit(
-          state.copyWith(
-            lastPosition: event.position,
-            remainingDistanceMeters: 0.0,
-            remainingDurationMinutes: 0,
-            isFinished: true,
-            isActive: false,
-            clearProximityAlert: true,
-          ),
-        );
-
-        add(StopNavigationEvent());
-        return;
-      }
+    // Chegada
+    if (route.waypoints.isNotEmpty && remainingMeters < 15.0) {
+      await _handleArrival(event, emit);
+      return;
     }
 
-    // 1. Detecção de Saída de Rota (Desvio > 40 metros da polyline)
+    // 1. Off-Route
+    final isOffRoute = await _checkOffRoute(userPos, route);
+    if (isOffRoute) {
+      _handleOffRoute(event, remainingMeters, remainingMinutes, emit);
+      return;
+    } else {
+      _handleOnRoute(event, remainingMeters, remainingMinutes, emit);
+    }
+
+    // 2. Obstacles
+    final proximityAlertTriggered = await _checkProximityAlerts(
+      userPos,
+      distanceCalc,
+      event,
+      remainingMeters,
+      remainingMinutes,
+      emit,
+    );
+
+    // 3. Steps
+    await _handleSteps(
+      userPos,
+      distanceCalc,
+      event,
+      route,
+      remainingMeters,
+      remainingMinutes,
+      proximityAlertTriggered,
+      emit,
+    );
+  }
+
+  (double, int) _calculateProgress(
+    NavigationRoute route,
+    LatLng userPos,
+    Distance distanceCalc,
+  ) {
+    if (route.waypoints.isEmpty) return (0.0, 0);
+    final destCoord = route.waypoints.last;
+    final destLatLng = LatLng(destCoord.latitude, destCoord.longitude);
+    final remainingMeters = distanceCalc
+        .as(LengthUnit.Meter, userPos, destLatLng)
+        .toDouble();
+    final remainingMinutes = (remainingMeters / 66.0).ceil();
+    return (remainingMeters, remainingMinutes);
+  }
+
+  Future<void> _handleArrival(
+    LocationUpdatedEvent event,
+    Emitter<ActiveNavigationState> emit,
+  ) async {
+    unawaited(HapticFeedback.mediumImpact());
+    await _voiceService.speak(
+      "Você chegou ao seu destino! Navegação concluída.",
+    );
+    emit(
+      state.copyWith(
+        lastPosition: event.position,
+        remainingDistanceMeters: 0.0,
+        remainingDurationMinutes: 0,
+        isFinished: true,
+        isActive: false,
+        clearProximityAlert: true,
+      ),
+    );
+    add(StopNavigationEvent());
+  }
+
+  Future<bool> _checkOffRoute(LatLng userPos, NavigationRoute route) async {
     double distanceToPoly;
     if (route.waypoints.length > 50) {
       final List<double> waypointsFlat = [];
@@ -370,56 +433,72 @@ class ActiveNavigationBloc
     } else {
       distanceToPoly = _distanceToPolyline(userPos, route.waypoints);
     }
+    return distanceToPoly > AppConstants.routeRecalculationThresholdMeters;
+  }
 
-    if (distanceToPoly > AppConstants.routeRecalculationThresholdMeters) {
-      // Dispara duplo impacto tátil não-bloqueante na transição de saída de rota
-      if (!state.isOffRoute) {
-        unawaited(HapticFeedback.heavyImpact());
-        unawaited(
-          Future.delayed(const Duration(milliseconds: 250), () {
-            HapticFeedback.heavyImpact();
-          }),
-        );
-      }
+  void _handleOffRoute(
+    LocationUpdatedEvent event,
+    double remainingMeters,
+    int remainingMinutes,
+    Emitter<ActiveNavigationState> emit,
+  ) {
+    if (!state.isOffRoute) {
+      unawaited(HapticFeedback.heavyImpact());
+      unawaited(
+        Future.delayed(const Duration(milliseconds: 250), () {
+          HapticFeedback.heavyImpact();
+        }),
+      );
+    }
 
+    emit(
+      state.copyWith(
+        isOffRoute: true,
+        lastPosition: event.position,
+        remainingDistanceMeters: remainingMeters,
+        remainingDurationMinutes: remainingMinutes,
+        clearProximityAlert: true,
+      ),
+    );
+
+    if (_offRouteTimer == null || !_offRouteTimer!.isActive) {
+      _offRouteTimer = Timer(const Duration(seconds: 5), () {
+        add(RecalculateRouteTriggeredEvent());
+      });
+    }
+  }
+
+  void _handleOnRoute(
+    LocationUpdatedEvent event,
+    double remainingMeters,
+    int remainingMinutes,
+    Emitter<ActiveNavigationState> emit,
+  ) {
+    if (_offRouteTimer != null && _offRouteTimer!.isActive) {
+      _offRouteTimer!.cancel();
+      _offRouteTimer = null;
+    }
+    if (state.isOffRoute) {
       emit(
         state.copyWith(
-          isOffRoute: true,
+          isOffRoute: false,
           lastPosition: event.position,
           remainingDistanceMeters: remainingMeters,
           remainingDurationMinutes: remainingMinutes,
           clearProximityAlert: true,
         ),
       );
-
-      // Inicia timer de 5 segundos se ele já não estiver ativo
-      if (_offRouteTimer == null || !_offRouteTimer!.isActive) {
-        _offRouteTimer = Timer(const Duration(seconds: 5), () {
-          add(RecalculateRouteTriggeredEvent());
-        });
-      }
-      return;
-    } else {
-      // Se voltou ao trajeto antes dos 5 segundos, cancela o timer e limpa o flag
-      if (_offRouteTimer != null && _offRouteTimer!.isActive) {
-        _offRouteTimer!.cancel();
-        _offRouteTimer = null;
-      }
-      if (state.isOffRoute) {
-        emit(
-          state.copyWith(
-            isOffRoute: false,
-            lastPosition: event.position,
-            remainingDistanceMeters: remainingMeters,
-            remainingDurationMinutes: remainingMinutes,
-            clearProximityAlert: true,
-          ),
-        );
-      }
     }
+  }
 
-    // 2. Consciência Espacial: Verificação de proximidade de obstáculos (15m - 20m)
-    bool proximityAlertTriggered = false;
+  Future<bool> _checkProximityAlerts(
+    LatLng userPos,
+    Distance distanceCalc,
+    LocationUpdatedEvent event,
+    double remainingMeters,
+    int remainingMinutes,
+    Emitter<ActiveNavigationState> emit,
+  ) async {
     for (final obstacle in state.activeObstacles) {
       if (state.alertedObstacleIds.contains(obstacle.id)) continue;
 
@@ -429,17 +508,13 @@ class ActiveNavigationBloc
         LatLng(obstacle.latitude, obstacle.longitude),
       );
 
-      // Alerta disparado se estiver a menos de 20 metros do obstáculo
       if (dist < 20.0) {
         final newAlerted = Set<String>.from(state.alertedObstacleIds)
           ..add(obstacle.id);
-
-        // Feedback Tátil Imediato (Haptic Heavy Impact) + Voz TTS
         unawaited(HapticFeedback.heavyImpact());
         await _voiceService.speak(
           "Atenção, obstáculo reportado à frente: ${obstacle.description}",
         );
-
         emit(
           state.copyWith(
             alertedObstacleIds: newAlerted,
@@ -448,14 +523,22 @@ class ActiveNavigationBloc
             remainingDurationMinutes: remainingMinutes,
           ),
         );
-
-        proximityAlertTriggered = true;
-        // Interrompe loop para não acumular alertas (TTS) em obstáculos aglomerados
-        break;
+        return true;
       }
     }
+    return false;
+  }
 
-    // 3. Acompanhamento dos Passos da Rota
+  Future<void> _handleSteps(
+    LatLng userPos,
+    Distance distanceCalc,
+    LocationUpdatedEvent event,
+    NavigationRoute route,
+    double remainingMeters,
+    int remainingMinutes,
+    bool proximityAlertTriggered,
+    Emitter<ActiveNavigationState> emit,
+  ) async {
     int stepIndex = state.currentStepIndex;
     final steps = route.steps;
 
@@ -465,16 +548,12 @@ class ActiveNavigationBloc
           .as(LengthUnit.Meter, userPos, nextStep.coordinate)
           .toDouble();
 
-      // Caso chegue a menos de 15 metros da conversão
       if (distanceToStep < AppConstants.obstacleProximityRadiusMeters) {
-        // Enuncia a instrução apenas se não houve alerta de obstáculo agora
         if (!proximityAlertTriggered) {
           await _voiceService.speak(nextStep.instruction);
         }
 
-        // Avança para o próximo passo se disponível
         stepIndex++;
-
         final isFinished = stepIndex >= steps.length;
 
         if (isFinished) {
@@ -548,9 +627,8 @@ class ActiveNavigationBloc
   ) async {
     if (_isRecalculating ||
         state.currentRoute == null ||
-        state.lastPosition == null) {
+        state.lastPosition == null)
       return;
-    }
     _isRecalculating = true;
 
     await _voiceService.speak(
@@ -563,14 +641,15 @@ class ActiveNavigationBloc
 
     try {
       final destCoord = state.currentRoute!.waypoints.last;
+      final preferences = _preferencesReader.current;
 
       final result = await _calculateAccessibleRouteUseCase(
         originLat: state.lastPosition!.latitude,
         originLng: state.lastPosition!.longitude,
         destLat: destCoord.latitude,
         destLng: destCoord.longitude,
-        avoidStairs: false,
-        requiresTactilePaving: false,
+        avoidStairs: preferences.avoidStairs,
+        requiresTactilePaving: preferences.requiresTactilePaving,
         activeObstacles: state.activeObstacles,
       );
 
@@ -615,7 +694,6 @@ class ActiveNavigationBloc
     }
   }
 
-  /// Offloading estático para Isolate: calcula a menor distância da rota sem travar a UI Isolate.
   static double _calculateDistanceToPolylineInIsolate(
     double userLat,
     double userLng,
@@ -666,7 +744,6 @@ class ActiveNavigationBloc
     return calc.as(LengthUnit.Meter, p, projection);
   }
 
-  /// Calcula a menor distância aproximada do usuário até a linha da rota
   double _distanceToPolyline(LatLng point, List<RouteCoordinate> waypoints) {
     if (waypoints.isEmpty) return 0.0;
 
@@ -754,5 +831,3 @@ class ActiveNavigationBloc
     return super.close();
   }
 }
-
-

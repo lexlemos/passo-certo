@@ -44,13 +44,9 @@ class MainApp extends StatelessWidget {
       providers: [
         // AuthBloc no topo da árvore: disponível em todas as rotas.
         // O AuthWrapper dispara AuthCheckRequested no initState.
-        BlocProvider<AuthBloc>(
-          create: (_) => di.sl<AuthBloc>(),
-        ),
+        BlocProvider<AuthBloc>(create: (_) => di.sl<AuthBloc>()),
         // ObstacleBloc disponível globalmente (mapa usa em múltiplas rotas).
-        BlocProvider<ObstacleBloc>(
-          create: (_) => di.sl<ObstacleBloc>(),
-        ),
+        BlocProvider<ObstacleBloc>(create: (_) => di.sl<ObstacleBloc>()),
       ],
       child: MaterialApp.router(
         title: 'Passo Certo',

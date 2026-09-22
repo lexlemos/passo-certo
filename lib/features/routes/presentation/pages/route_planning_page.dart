@@ -118,7 +118,6 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
                           );
                         }
 
-
                         // --------------------------------------------------------
                         // MODO EDIÇÃO (Formulário Completo de Busca)
                         // --------------------------------------------------------
@@ -138,7 +137,12 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  12,
+                                  0,
+                                ),
                                 child: Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -202,4 +206,3 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
     );
   }
 }
-

@@ -19,8 +19,12 @@ import 'map_layers/place_markers_layer.dart';
 import 'map_layers/obstacle_markers_layer.dart';
 import 'map_layers/map_action_buttons_hud.dart';
 import 'map_layers/map_selection_mode_banner.dart';
+import 'map_layers/route_polyline_layer.dart';
+import 'map_layers/user_location_layer.dart';
+import 'map_layers/cached_tile_provider.dart';
 
 enum MapSelectionMode { none, obstacle, place }
+
 enum _LocationPermissionStatus { checking, granted, denied }
 
 void _safeMoveMap(MapController controller, LatLng target, [double? zoom]) {
@@ -138,32 +142,45 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         ),
         BlocListener<RoutePlanningBloc, RoutePlanningState>(
           listenWhen: (prev, curr) {
-            final originChanged = (prev.originLat != curr.originLat ||
+            final originChanged =
+                (prev.originLat != curr.originLat ||
                     prev.originLng != curr.originLng) &&
                 curr.originLat != null &&
                 curr.originLng != null;
             final isResetSearch =
-                prev.routes.isNotEmpty && curr.routes.isEmpty && curr.destLat == null;
-            final destinationSelected = prev.destLat == null && curr.destLat != null;
-            final routesCalculated = prev.routes.isEmpty && curr.routes.isNotEmpty;
-            return originChanged || isResetSearch || destinationSelected || routesCalculated;
+                prev.routes.isNotEmpty &&
+                curr.routes.isEmpty &&
+                curr.destLat == null;
+            final destinationSelected =
+                prev.destLat == null && curr.destLat != null;
+            final routesCalculated =
+                prev.routes.isEmpty && curr.routes.isNotEmpty;
+            return originChanged ||
+                isResetSearch ||
+                destinationSelected ||
+                routesCalculated;
           },
           listener: (context, planningState) {
-            final isResetSearch = planningState.routes.isEmpty && planningState.destLat == null;
-            final destinationSelected = planningState.destLat != null && planningState.routes.isEmpty;
+            final isResetSearch =
+                planningState.routes.isEmpty && planningState.destLat == null;
+            final destinationSelected =
+                planningState.destLat != null && planningState.routes.isEmpty;
             final routesCalculated = planningState.routes.isNotEmpty;
-            
+
             if (routesCalculated) {
-              if (planningState.originLat != null && planningState.destLat != null) {
+              if (planningState.originLat != null &&
+                  planningState.destLat != null) {
                 try {
                   final bounds = LatLngBounds(
                     LatLng(planningState.originLat!, planningState.originLng!),
                     LatLng(planningState.destLat!, planningState.destLng!),
                   );
-                  _mapController.fitCamera(CameraFit.bounds(
-                    bounds: bounds,
-                    padding: const EdgeInsets.all(40.0),
-                  ));
+                  _mapController.fitCamera(
+                    CameraFit.bounds(
+                      bounds: bounds,
+                      padding: const EdgeInsets.all(40.0),
+                    ),
+                  );
                 } catch (_) {}
               }
             } else if (destinationSelected) {
@@ -195,11 +212,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
             previous.destLat != current.destLat ||
             previous.destLng != current.destLng,
         builder: (context, state) {
-          return _buildMapContent(
-            state,
-            obstacles,
-            addedPlaces,
-          );
+          return _buildMapContent(state, obstacles, addedPlaces);
         },
       ),
     );
@@ -260,47 +273,10 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         );
 
       case _LocationPermissionStatus.granted:
-        final List<Polyline> polylines = [];
-        final selectedIndex = state.selectedRouteIndex;
-
-        // 1. Adiciona primeiro as rotas NÃO selecionadas (camada inferior no Z-Index)
-        for (int i = 0; i < state.routes.length; i++) {
-          if (i == selectedIndex) continue;
-          final route = state.routes[i];
-          final isAccessible =
-              route.title.toLowerCase().contains('acessível') ||
-              route.accessibilityScore >= 0.8;
-          final unselectedColor = isAccessible
-              ? AppTheme.mintGreen.withValues(alpha: 0.50)
-              : const Color(0xFF2196F3).withValues(alpha: 0.55);
-          polylines.add(
-            Polyline(
-              points: route.latLngWaypoints,
-              color: unselectedColor,
-              strokeWidth: 6,
-            ),
-          );
-        }
-
-        // 2. Adiciona por último a rota SELECIONADA (camada superior no Z-Index com cor vibrante)
-        if (selectedIndex >= 0 && selectedIndex < state.routes.length) {
-          final selectedRoute = state.routes[selectedIndex];
-          final isAccessible =
-              selectedRoute.title.toLowerCase().contains('acessível') ||
-              selectedRoute.accessibilityScore >= 0.8;
-          final selectedColor = isAccessible
-              ? AppTheme.mintGreen
-              : const Color(0xFF2196F3);
-          polylines.add(
-            Polyline(
-              points: selectedRoute.latLngWaypoints,
-              color: selectedColor,
-              strokeWidth: 9,
-            ),
-          );
-        }
-
-
+        final polylines = RoutePolylineLayer.buildPolylines(
+          routes: state.routes,
+          selectedRouteIndex: state.selectedRouteIndex,
+        );
 
         final obstacleMarkers = ObstacleMarkersLayer.buildMarkers(
           obstacles,
@@ -354,9 +330,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 options: MapOptions(
                   initialCenter:
                       state.originLat != null &&
-                      state.originLng != null &&
-                      state.originLat!.isFinite &&
-                      state.originLng!.isFinite
+                          state.originLng != null &&
+                          state.originLat!.isFinite &&
+                          state.originLng!.isFinite
                       ? LatLng(state.originLat!, state.originLng!)
                       : const LatLng(
                           AppConstants.defaultMapCenterLat,
@@ -404,7 +380,8 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.passo_certo',
                     // Tile Scaling: servidor CartoCDN serve até zoom 19 (maxNativeZoom).
                     // Para zooms acima, o flutter_map estica digitalmente o tile do
@@ -412,6 +389,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                     // e sem telas cinzas. Ideal para navegação interna pedestre.
                     maxNativeZoom: AppConstants.mapMaxNativeZoom,
                     maxZoom: AppConstants.mapMaxZoom,
+                    tileProvider: CachedTileProvider(),
                     keepBuffer: 2,
                     panBuffer: 1,
                     evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
@@ -424,7 +402,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                       ...dynamicMarkers,
                     ],
                   ),
-                  const _ActiveNavigationUserMarkerLayer(),
+                  const UserLocationLayer(),
                 ],
               ),
             ),
@@ -448,10 +426,8 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 setState(() {
                   _autoCenter = true;
                 });
-                final activeState =
-                    context.read<ActiveNavigationBloc>().state;
-                if (activeState.isActive &&
-                    activeState.lastPosition != null) {
+                final activeState = context.read<ActiveNavigationBloc>().state;
+                if (activeState.isActive && activeState.lastPosition != null) {
                   _safeMoveMap(
                     _mapController,
                     LatLng(
@@ -459,8 +435,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                       activeState.lastPosition!.longitude,
                     ),
                   );
-                } else if (state.originLat != null &&
-                    state.originLng != null) {
+                } else if (state.originLat != null && state.originLng != null) {
                   _safeMoveMap(
                     _mapController,
                     LatLng(state.originLat!, state.originLng!),
@@ -496,8 +471,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
       ObstacleType.other: 'Outro',
     };
     final typeLabel = typeLabels[obstacle.type] ?? 'Desconhecido';
-    final severityColor =
-        isBlocking ? const Color(0xFFD32F2F) : const Color(0xFFFBC02D);
+    final severityColor = isBlocking
+        ? const Color(0xFFD32F2F)
+        : const Color(0xFFFBC02D);
     final severityLabel = isBlocking ? 'Bloqueio' : 'Aviso';
     final severityIcon = isBlocking ? Icons.block : Icons.priority_high;
 
@@ -558,7 +534,11 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(severityIcon, color: isBlocking ? Colors.white : Colors.black, size: 16),
+                          Icon(
+                            severityIcon,
+                            color: isBlocking ? Colors.white : Colors.black,
+                            size: 16,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             severityLabel,
@@ -678,13 +658,18 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Color(0xFF718096))),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF718096)),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD32F2F),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () {
               Navigator.of(dialogCtx).pop();
@@ -704,7 +689,9 @@ class _RouteMapSectionState extends State<RouteMapSection> {
     if (place.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Este local ainda não foi sincronizado com o servidor.'),
+          content: Text(
+            'Este local ainda não foi sincronizado com o servidor.',
+          ),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
@@ -717,12 +704,19 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.delete_outline, color: Color(0xFFD32F2F), size: 22),
+            const Icon(
+              Icons.delete_outline,
+              color: Color(0xFFD32F2F),
+              size: 22,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Remover "${place.name}"?',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -747,13 +741,18 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: Color(0xFF718096))),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF718096)),
+            ),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD32F2F),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             icon: const Icon(Icons.check, size: 16),
             label: const Text('Remover'),
@@ -809,161 +808,6 @@ class _GpsDisabledBanner extends StatelessWidget {
               ),
             ),
           ),
-        );
-      },
-    );
-  }
-}
-
-
-/// Camada isolada de alta performance para o marcador do usuário em navegação ativa.
-///
-/// Escuta estritamente alterações de coordenadas do GPS para evitar rebuilds do [FlutterMap].
-class _ActiveNavigationUserMarkerLayer extends StatelessWidget {
-  const _ActiveNavigationUserMarkerLayer();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<ActiveNavigationBloc, ActiveNavigationState>(
-      buildWhen: (prev, curr) {
-        final prevPos = prev.lastPosition;
-        final currPos = curr.lastPosition;
-        if (prev.isActive != curr.isActive) return true;
-        if (prevPos == null && currPos == null) return false;
-        if (prevPos == null || currPos == null) return true;
-        return prevPos.latitude != currPos.latitude ||
-            prevPos.longitude != currPos.longitude;
-      },
-      builder: (context, activeState) {
-        if (!activeState.isActive || activeState.lastPosition == null) {
-          return const SizedBox.shrink();
-        }
-
-        final latLng = LatLng(
-          activeState.lastPosition!.latitude,
-          activeState.lastPosition!.longitude,
-        );
-
-        return MarkerLayer(
-          markers: [
-            Marker(
-              point: latLng,
-              width: 44,
-              height: 44,
-              child: const _PulsingUserLocationMarker(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Componente de pino pulsante com gerenciamento de ciclo de vida seguro contra vazamentos de memória.
-class _PulsingUserLocationMarker extends StatefulWidget {
-  const _PulsingUserLocationMarker();
-
-  @override
-  State<_PulsingUserLocationMarker> createState() =>
-      __PulsingUserLocationMarkerState();
-}
-
-class __PulsingUserLocationMarkerState extends State<_PulsingUserLocationMarker>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  AnimationController? _controller;
-  Animation<double>? _scaleAnimation;
-  Animation<double>? _fadeAnimation;
-  bool _isObserving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    try {
-      WidgetsBinding.instance.addObserver(this);
-      _isObserving = true;
-    } catch (_) {}
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-
-    if (_controller != null) {
-      _scaleAnimation = Tween<double>(begin: 1.0, end: 1.6).animate(
-        CurvedAnimation(parent: _controller!, curve: Curves.easeOut),
-      );
-      _fadeAnimation = Tween<double>(begin: 0.6, end: 0.0).animate(
-        CurvedAnimation(parent: _controller!, curve: Curves.easeOut),
-      );
-      _controller!.repeat();
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_controller == null || !mounted) return;
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      if (_controller!.isAnimating) {
-        _controller!.stop();
-      }
-    } else if (state == AppLifecycleState.resumed) {
-      if (!_controller!.isAnimating) {
-        _controller!.repeat();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    if (_isObserving) {
-      try {
-        WidgetsBinding.instance.removeObserver(this);
-      } catch (_) {}
-      _isObserving = false;
-    }
-    _controller?.stop();
-    _controller?.dispose();
-    _controller = null;
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_controller == null || _scaleAnimation == null || _fadeAnimation == null) {
-      return const Icon(
-        Icons.navigation,
-        color: AppTheme.mintGreen,
-        size: 32,
-        semanticLabel: 'Sua posição atual na navegação',
-      );
-    }
-
-    return AnimatedBuilder(
-      animation: _controller!,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Transform.scale(
-              scale: _scaleAnimation!.value,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.mintGreen.withValues(
-                    alpha: _fadeAnimation!.value.clamp(0.0, 1.0),
-                  ),
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.navigation,
-              color: AppTheme.mintGreen,
-              size: 32,
-              semanticLabel: 'Sua posição atual na navegação',
-            ),
-          ],
         );
       },
     );

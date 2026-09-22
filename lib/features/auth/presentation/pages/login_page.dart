@@ -175,8 +175,9 @@ class _LoginPageState extends State<LoginPage> {
                                 obscureText: _obscurePassword,
                                 textInputAction: TextInputAction.done,
                                 enabled: !isLoading,
-                                onFieldSubmitted:
-                                    isLoading ? null : (_) => _onSubmit(),
+                                onFieldSubmitted: isLoading
+                                    ? null
+                                    : (_) => _onSubmit(),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePassword
@@ -188,9 +189,9 @@ class _LoginPageState extends State<LoginPage> {
                                   onPressed: isLoading
                                       ? null
                                       : () => setState(
-                                            () => _obscurePassword =
-                                                !_obscurePassword,
-                                          ),
+                                          () => _obscurePassword =
+                                              !_obscurePassword,
+                                        ),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -243,10 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const Text(
                       'Não tem conta? ',
-                      style: TextStyle(
-                        color: Color(0xFF718096),
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Color(0xFF718096), fontSize: 15),
                     ),
                     GestureDetector(
                       onTap: () => context.go('/signup'),
@@ -315,10 +313,7 @@ class _AuthTextField extends StatelessWidget {
       textInputAction: textInputAction,
       validator: validator,
       onFieldSubmitted: onFieldSubmitted,
-      style: const TextStyle(
-        fontSize: 15,
-        color: Color(0xFF1A1A2E),
-      ),
+      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A2E)),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

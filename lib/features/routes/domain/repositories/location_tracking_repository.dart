@@ -6,4 +6,3 @@ abstract class LocationTrackingRepository {
   Future<void> enableWakelock();
   Future<void> disableWakelock();
 }
-

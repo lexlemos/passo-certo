@@ -38,11 +38,23 @@ class PlaceModel extends Place {
   /// arrays Postgres como `List<dynamic>`. Não há loop adicional — `.from` usa
   /// iteração interna nativa do SDK do Dart, sem alocações intermediárias.
   factory PlaceModel.fromJson(Map<String, dynamic> json) {
+    final lat = (json['latitude'] as num).toDouble();
+    final lng = (json['longitude'] as num).toDouble();
+
+    if (!lat.isFinite ||
+        !lng.isFinite ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180) {
+      throw FormatException('Coordenada geográfica inválida: ($lat, $lng)');
+    }
+
     return PlaceModel(
       id: json['id'] as String?,
       name: json['name'] as String? ?? '',
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      latitude: lat,
+      longitude: lng,
       searchTerms: List<String>.from(json['search_terms'] as List? ?? const []),
       category: json['category'] as String? ?? '',
       floor: json['floor'] as int? ?? 0,

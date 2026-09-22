@@ -95,10 +95,22 @@ class ObstacleModel extends Obstacle {
         ? DateTime.parse(json['updated_at'] as String)
         : createdAt;
 
+    final lat = (json['latitude'] as num).toDouble();
+    final lng = (json['longitude'] as num).toDouble();
+
+    if (!lat.isFinite ||
+        !lng.isFinite ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180) {
+      throw FormatException('Coordenada geográfica inválida: ($lat, $lng)');
+    }
+
     return ObstacleModel(
       id: json['id'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
+      latitude: lat,
+      longitude: lng,
       type: _parseType(json['type'] as String?),
       description: json['description'] as String? ?? '',
       reportedAt: createdAt,

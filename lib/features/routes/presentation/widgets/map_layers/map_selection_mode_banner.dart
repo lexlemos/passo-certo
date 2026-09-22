@@ -31,10 +31,7 @@ class MapSelectionModeBanner extends StatelessWidget {
             ? 'Modo de seleção ativo: Toque no mapa para marcar a localização do novo obstáculo'
             : 'Modo de seleção ativo: Toque no mapa para marcar a localização do novo local',
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: isObstacle
                 ? const Color(0xFFB71C1C)
@@ -75,11 +72,7 @@ class MapSelectionModeBanner extends StatelessWidget {
                   onTap: onCancel,
                   child: const Padding(
                     padding: EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 22,
-                    ),
+                    child: Icon(Icons.close, color: Colors.white, size: 22),
                   ),
                 ),
               ),

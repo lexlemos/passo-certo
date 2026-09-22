@@ -39,21 +39,12 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     // ── Splash / Auth Gate ─────────────────────────────────────────────────
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const AuthWrapper(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const AuthWrapper()),
 
     // ── Autenticação ───────────────────────────────────────────────────────
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginPage(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
 
-    GoRoute(
-      path: '/signup',
-      builder: (context, state) => const SignUpPage(),
-    ),
+    GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
 
     GoRoute(
       path: '/edit-profile',

@@ -26,18 +26,18 @@ class RecentSearchLocalDataSourceImpl implements RecentSearchLocalDataSource {
   @override
   Future<void> saveRecentSearch(Place place) async {
     final searches = await getRecentSearches();
-    
+
     // Remove duplicate if exists
     searches.removeWhere((p) => p.name == place.name);
-    
+
     // Add to the top
     searches.insert(0, place);
-    
+
     // Keep only last 5
     if (searches.length > 5) {
       searches.removeLast();
     }
-    
+
     final jsonList = searches.map((p) => _placeToJson(p)).toList();
     await sharedPreferences.setString(_key, json.encode(jsonList));
   }

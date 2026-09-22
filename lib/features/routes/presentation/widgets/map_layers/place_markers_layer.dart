@@ -34,10 +34,7 @@ abstract class PlaceMarkersLayer {
           label: semanticLabel,
           button: onTap != null,
           child: onTap != null
-              ? GestureDetector(
-                  onTap: () => onTap(p),
-                  child: markerWidget,
-                )
+              ? GestureDetector(onTap: () => onTap(p), child: markerWidget)
               : markerWidget,
         ),
       );
