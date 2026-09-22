@@ -42,7 +42,23 @@ class ORSRouteRepositoryImpl implements RouteRepository {
       );
     }
 
-    // Dispara as duas requisições em paralelo para menor latência
+    // -------------------------------------------------------------------------
+    // Filtragem inteligente de obstáculos por perfil (Design Universal)
+    //
+    // accessibleAvoidanceList → TODOS os obstáculos bloqueantes (cadeirantes):
+    //   pothole, blockedSidewalk, stairs, noTactilePaving, other
+    //
+    // walkingAvoidanceList → APENAS bloqueios totais de calçada para pedestres:
+    //   blockedSidewalk  (o pedestre contorna buracos/piso ruim com o passo)
+    // -------------------------------------------------------------------------
+    final accessibleAvoidanceList = List<Obstacle>.from(blockingObstacles ?? []);
+
+    final walkingAvoidanceList =
+        (blockingObstacles ?? []).where((obs) {
+          return obs.type == ObstacleType.blockedSidewalk;
+        }).toList();
+
+    // Dispara as duas requisições em paralelo com listas de obstáculos distintas
     final results = await Future.wait([
       _fetchRoute(
         profile: _OrsProfile.wheelchair,
@@ -50,7 +66,7 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         originLng: originLng,
         destLat: destLat,
         destLng: destLng,
-        blockingObstacles: blockingObstacles,
+        blockingObstacles: accessibleAvoidanceList,
         apiKey: apiKey,
       ),
       _fetchRoute(
@@ -59,7 +75,8 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         originLng: originLng,
         destLat: destLat,
         destLng: destLng,
-        blockingObstacles: blockingObstacles,
+        // Lista vazia → nenhum avoid_polygon enviado → ORS traça a linha mais curta
+        blockingObstacles: walkingAvoidanceList,
         apiKey: apiKey,
       ),
     ]);
@@ -372,7 +389,10 @@ class ORSRouteRepositoryImpl implements RouteRepository {
         final score = (0.95 - penalty).clamp(0.40, 0.99);
         return double.parse(score.toStringAsFixed(2));
       } else {
-        final score = (0.60 - (penalty * 0.5)).clamp(0.30, 0.70);
+        // Pedestres desviam naturalmente de superfícies ruins com o passo;
+        // aplicamos fator de penalidade reduzido (0.25) para não punir
+        // rotas a pé que cruzem buracos ou pisos irregulares esporadicamente.
+        final score = (0.60 - (penalty * 0.25)).clamp(0.30, 0.70);
         return double.parse(score.toStringAsFixed(2));
       }
     } catch (_) {

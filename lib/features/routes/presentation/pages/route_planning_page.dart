@@ -95,6 +95,8 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
 
                         // --------------------------------------------------------
                         // MODO RESULTADO (Rotas Calculadas)
+                        // O RouteSearchCard gerencia internamente os 3 estados:
+                        // RESULTADO → VISUALIZAÇÃO → NOVA BUSCA
                         // --------------------------------------------------------
                         if (hasRoutes) {
                           return Container(
@@ -109,110 +111,13 @@ class _RoutePlanningPageState extends State<RoutePlanningPage> {
                                 ),
                               ],
                             ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Barra Resumo Pílula Moderna do Destino
-                                Semantics(
-                                  button: true,
-                                  label: 'Editar endereço de origem e destino',
-                                  child: Container(
-                                    margin: const EdgeInsets.fromLTRB(
-                                      12,
-                                      12,
-                                      12,
-                                      4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.softGreyBg,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: AppTheme.mintGreen.withValues(
-                                          alpha: 0.40,
-                                        ),
-                                        width: 1.2,
-                                      ),
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: InkWell(
-                                        onTap: () {
-                                          context
-                                              .read<RoutePlanningBloc>()
-                                              .add(ClearRouteSearchEvent());
-                                        },
-                                        borderRadius: BorderRadius.circular(
-                                          14,
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.place_rounded,
-                                                color: AppTheme.mintGreen,
-                                                size: 22,
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(
-                                                  'Destino: ${_destinationController.text.isNotEmpty ? _destinationController.text : "Local Selecionado"}',
-                                                  style: const TextStyle(
-                                                    color: AppTheme.spaceBlue,
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 14,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.all(6),
-                                                decoration: BoxDecoration(
-                                                  color: AppTheme.spaceBlue
-                                                      .withValues(
-                                                        alpha: 0.08,
-                                                      ),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.edit,
-                                                  size: 14,
-                                                  color: AppTheme.spaceBlue,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Conteúdo Interno do Card (Opções de Rota + Botão Iniciar)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    10,
-                                    4,
-                                    10,
-                                    10,
-                                  ),
-                                  child: RouteSearchCard(
-                                    originController: _originController,
-                                    destinationController:
-                                        _destinationController,
-                                  ),
-                                ),
-                              ],
+                            child: RouteSearchCard(
+                              originController: _originController,
+                              destinationController: _destinationController,
                             ),
                           );
                         }
+
 
                         // --------------------------------------------------------
                         // MODO EDIÇÃO (Formulário Completo de Busca)

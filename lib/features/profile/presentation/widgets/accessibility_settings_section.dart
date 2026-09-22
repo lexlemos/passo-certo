@@ -47,21 +47,7 @@ class AccessibilitySettingsSection extends StatelessWidget {
                           color: AppColors.tealPrimary,
                         ),
                         const SizedBox(height: 16),
-                        ProfileSwitchRow(
-                          title: 'Navegação por Voz',
-                          subtitle: 'Instruções de rota faladas passo a passo.',
-                          value: state.voiceNavigation,
-                          onChanged: (val) {
-                            context.read<ProfileNavigationBloc>().add(
-                              ToggleVoiceNavigationEvent(value: val),
-                            );
-                          },
-                        ),
-                        Divider(
-                          height: 32,
-                          color: Colors.grey[200],
-                          thickness: 1,
-                        ),
+
                         ProfileSwitchRow(
                           title: 'Alto Contraste',
                           subtitle: 'Aumenta o contraste visual da interface.',

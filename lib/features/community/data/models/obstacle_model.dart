@@ -6,9 +6,16 @@ import '../../domain/entities/obstacle.dart';
 /// para o formato JSON do PostgreSQL (Supabase).
 ///
 /// Convenção de nomenclatura:
-/// - Banco (snake_case): `reporter_id`, `reported_at`, `is_accessible`
-/// - Dart (camelCase) : `reporterId`,  `reportedAt`,  `isAccessible`
+/// - Banco (snake_case): `reporter_id`, `reported_at`, `updated_at`
+/// - Dart (camelCase) : `reporterId`,  `reportedAt`,  `updatedAt`
 class ObstacleModel extends Obstacle {
+  /// Data/hora da última modificação do registro no banco.
+  ///
+  /// Corresponde à coluna `updated_at` (gerenciada pelo trigger `moddatetime`).
+  /// Faz fallback para [reportedAt] em registros antigos que ainda não possuam
+  /// a coluna populada.
+  final DateTime updatedAt;
+
   const ObstacleModel({
     required super.id,
     required super.latitude,
@@ -18,6 +25,7 @@ class ObstacleModel extends Obstacle {
     required super.reportedAt,
     required super.upvotes,
     required super.reporterId,
+    required this.updatedAt,
     super.severity,
     super.status,
   });
@@ -63,7 +71,8 @@ class ObstacleModel extends Obstacle {
 
   // ─── Desserialização ──────────────────────────────────────────────────────
 
-  /// Constrói um [ObstacleModel] a partir de um mapa JSON vindo do Supabase.
+  /// Constrói um [ObstacleModel] a partir de um mapa JSON vindo do Supabase
+  /// ou do cache local.
   ///
   /// | Coluna Postgres   | Propriedade Dart | Tipo              |
   /// |-------------------|------------------|-------------------|
@@ -73,18 +82,27 @@ class ObstacleModel extends Obstacle {
   /// | `type`            | type             | ObstacleType enum |
   /// | `description`     | description      | String            |
   /// | `created_at`      | reportedAt       | DateTime (ISO8601)|
+  /// | `updated_at`      | updatedAt        | DateTime (ISO8601)|
   /// | `upvotes`         | upvotes          | int               |
   /// | `reporter_id`     | reporterId       | String (UUID)     |
   /// | `severity`        | severity         | ObstacleSeverity  |
   /// | `status`          | status           | ObstacleStatus    |
   factory ObstacleModel.fromJson(Map<String, dynamic> json) {
+    final createdAt = DateTime.parse(json['created_at'] as String);
+
+    // Fallback para `created_at` em registros antigos sem a coluna `updated_at`.
+    final updatedAt = json['updated_at'] != null
+        ? DateTime.parse(json['updated_at'] as String)
+        : createdAt;
+
     return ObstacleModel(
       id: json['id'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       type: _parseType(json['type'] as String?),
       description: json['description'] as String? ?? '',
-      reportedAt: DateTime.parse(json['created_at'] as String),
+      reportedAt: createdAt,
+      updatedAt: updatedAt,
       upvotes: json['upvotes'] as int? ?? 0,
       reporterId: json['reporter_id'] as String? ?? 'anonymous',
       severity: _parseSeverity(json['severity'] as String?),
@@ -94,11 +112,13 @@ class ObstacleModel extends Obstacle {
 
   // ─── Serialização ─────────────────────────────────────────────────────────
 
-  /// Serializa o modelo para o formato JSON esperado pela tabela `obstacles`.
+  /// Serializa o modelo para o formato JSON.
+  ///
+  /// Usado tanto para INSERT no Supabase quanto para persistência no cache local.
   ///
   /// Notas:
   /// - `id` é incluído para permitir upserts; o banco usa-o como PK.
-  /// - `reported_at` é enviado em UTC ISO-8601.
+  /// - `created_at` / `updated_at` são enviados em UTC ISO-8601.
   /// - `upvotes` começa em 0 para novos registros.
   Map<String, dynamic> toJson() {
     return {
@@ -108,6 +128,9 @@ class ObstacleModel extends Obstacle {
       'type': _typeToString(type),
       'description': description,
       'created_at': reportedAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+      'upvotes': upvotes,
+      'reporter_id': reporterId,
       'severity': _severityToString(severity),
       'status': _statusToString(status),
     };

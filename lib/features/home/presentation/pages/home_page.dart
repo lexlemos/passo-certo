@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/base_card.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../widgets/emergency_dialog_sheet.dart';
 import '../../../community/presentation/widgets/report_obstacle_bottom_sheet.dart';
 
@@ -20,7 +22,15 @@ class HomePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Seção de Boas-vindas (Topo)
-          Text('Olá, Maria!', style: theme.textTheme.headlineLarge),
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              String firstName = '';
+              if (state is Authenticated) {
+                firstName = state.user.name.split(' ').first;
+              }
+              return Text('Olá, $firstName!', style: theme.textTheme.headlineLarge);
+            },
+          ),
           const SizedBox(height: 4),
           Text('Onde vamos hoje?', style: theme.textTheme.bodyMedium),
           const SizedBox(height: 24),

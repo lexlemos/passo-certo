@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class EmergencyDialogSheet extends StatelessWidget {
   const EmergencyDialogSheet({super.key});
@@ -57,7 +60,18 @@ class EmergencyDialogSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        bool hasPersonalContact = false;
+        String personalPhone = '';
+        if (state is Authenticated &&
+            state.user.emergencyPhone != null &&
+            state.user.emergencyPhone!.isNotEmpty) {
+          hasPersonalContact = true;
+          personalPhone = state.user.emergencyPhone!;
+        }
+
+        return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -117,6 +131,39 @@ class EmergencyDialogSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          // Opção Contato Pessoal
+          _EmergencyOptionCard(
+            option: _EmergencyOption(
+              name: 'Contato Pessoal',
+              description: hasPersonalContact
+                  ? 'Ligar para seu contato de emergência'
+                  : 'Adicione um telefone de emergência',
+              number: personalPhone,
+              displayNumber:
+                  hasPersonalContact ? personalPhone : 'Não configurado',
+              icon: Icons.person_rounded,
+              color: AppColors.tealPrimary,
+            ),
+            onTap: () {
+              if (hasPersonalContact) {
+                _dial(
+                  context,
+                  _EmergencyOption(
+                    name: 'Contato Pessoal',
+                    description: '',
+                    number: personalPhone,
+                    icon: Icons.person_rounded,
+                    color: AppColors.tealPrimary,
+                  ),
+                );
+              } else {
+                Navigator.pop(context);
+                context.push('/edit-profile');
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+
           // Opção SAMU
           _EmergencyOptionCard(
             option: _samu,
@@ -156,6 +203,7 @@ class EmergencyDialogSheet extends StatelessWidget {
         ],
       ),
     );
+  });
   }
 }
 

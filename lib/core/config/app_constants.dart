@@ -11,4 +11,16 @@ class AppConstants {
   /// Coordenadas padrão da UFS
   static const double defaultMapCenterLat = -10.9472;
   static const double defaultMapCenterLng = -37.0731;
+
+  // ---------------------------------------------------------------------------
+  // Configurações de Zoom do Mapa (Tile Scaling para navegação pedestre interna)
+  // ---------------------------------------------------------------------------
+
+  /// Zoom máximo da câmera. Acima do nível nativo do servidor, o flutter_map
+  /// aplica escala digital (over-zoom) sobre o tile do nível 19 — sem tela cinza.
+  static const double mapMaxZoom = 20.0;
+
+  /// Nível máximo de tile que o servidor CartoCDN disponibiliza.
+  /// Requisições HTTP para zooms acima deste nível retornariam 404/tile cinza.
+  static const int mapMaxNativeZoom = 19;
 }
