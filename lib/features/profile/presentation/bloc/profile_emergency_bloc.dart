@@ -47,14 +47,15 @@ class ProfileEmergencyState {
 }
 
 // --- BLOC ---
-class ProfileEmergencyBloc extends HydratedBloc<ProfileEmergencyEvent, ProfileEmergencyState> {
+class ProfileEmergencyBloc
+    extends HydratedBloc<ProfileEmergencyEvent, ProfileEmergencyState> {
   final ValidateEmergencyContactUseCase _validateEmergencyContactUseCase;
 
   ProfileEmergencyBloc({
     ValidateEmergencyContactUseCase? validateEmergencyContactUseCase,
-  })  : _validateEmergencyContactUseCase =
-            validateEmergencyContactUseCase ?? ValidateEmergencyContactUseCase(),
-        super(ProfileEmergencyState(contactText: '')) {
+  }) : _validateEmergencyContactUseCase =
+           validateEmergencyContactUseCase ?? ValidateEmergencyContactUseCase(),
+       super(ProfileEmergencyState(contactText: '')) {
     on<LoadEmergencyContactEvent>(_onLoadEmergencyContact);
     on<SaveEmergencyContactEvent>(_onSaveEmergencyContact);
   }
@@ -64,12 +65,16 @@ class ProfileEmergencyBloc extends HydratedBloc<ProfileEmergencyEvent, ProfileEm
     Emitter<ProfileEmergencyState> emit,
   ) {
     if (state.contactText.isNotEmpty) return;
-    final contact = EmergencyContact.fromSingleString('Maria Souza (79) 99999-9999');
-    emit(state.copyWith(
-      contactText: 'Maria Souza (79) 99999-9999',
-      contact: contact,
-      isSaved: false,
-    ));
+    final contact = EmergencyContact.fromSingleString(
+      'Maria Souza (79) 99999-9999',
+    );
+    emit(
+      state.copyWith(
+        contactText: 'Maria Souza (79) 99999-9999',
+        contact: contact,
+        isSaved: false,
+      ),
+    );
   }
 
   Future<void> _onSaveEmergencyContact(
@@ -81,30 +86,30 @@ class ProfileEmergencyBloc extends HydratedBloc<ProfileEmergencyEvent, ProfileEm
     final validationError = _validateEmergencyContactUseCase(contact);
 
     if (validationError != null) {
-      emit(state.copyWith(
-        isSaved: false,
-        errorMessage: validationError,
-        isLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          isSaved: false,
+          errorMessage: validationError,
+          isLoading: false,
+        ),
+      );
       return;
     }
 
-    emit(state.copyWith(
-      isLoading: true,
-      isSaved: false,
-      errorMessage: null,
-    ));
+    emit(state.copyWith(isLoading: true, isSaved: false, errorMessage: null));
 
     // Simula salvamento
     await Future.delayed(const Duration(milliseconds: 800));
 
-    emit(state.copyWith(
-      isLoading: false,
-      isSaved: true,
-      contactText: inputText,
-      contact: contact,
-      errorMessage: null,
-    ));
+    emit(
+      state.copyWith(
+        isLoading: false,
+        isSaved: true,
+        contactText: inputText,
+        contact: contact,
+        errorMessage: null,
+      ),
+    );
   }
 
   @override

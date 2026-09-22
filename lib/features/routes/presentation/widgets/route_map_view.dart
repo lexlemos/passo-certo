@@ -7,27 +7,66 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../community/domain/entities/obstacle.dart';
 import '../../../community/presentation/bloc/obstacle_bloc.dart';
+import '../../domain/entities/place.dart';
+import '../bloc/add_place_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/base_card.dart';
+import '../../../../core/config/app_constants.dart';
 import '../bloc/route_planning_bloc.dart';
 import '../bloc/active_navigation_bloc.dart';
+import '../../../community/presentation/widgets/report_obstacle_bottom_sheet.dart';
+import 'add_place_bottom_sheet.dart';
+import 'map_layers/place_markers_layer.dart';
+import 'map_layers/obstacle_markers_layer.dart';
+import 'map_layers/map_action_buttons_hud.dart';
+import 'map_layers/map_selection_mode_banner.dart';
+import 'map_layers/route_polyline_layer.dart';
+import 'map_layers/user_location_layer.dart';
+import 'map_layers/cached_tile_provider.dart';
 
-// ---------------------------------------------------------------------------
-// RouteMapSection — widget público usado pela página
-// ---------------------------------------------------------------------------
+enum MapSelectionMode { none, obstacle, place }
+
+enum _LocationPermissionStatus { checking, granted, denied }
+
+void _safeMoveMap(MapController controller, LatLng target, [double? zoom]) {
+  if (!target.latitude.isFinite || !target.longitude.isFinite) return;
+  if (target.latitude < -90.0 ||
+      target.latitude > 90.0 ||
+      target.longitude < -180.0 ||
+      target.longitude > 180.0) {
+    return;
+  }
+  try {
+    double validZoom = 15.0;
+    try {
+      final z = controller.camera.zoom;
+      if (z.isFinite && z >= 3.0 && z <= 18.0) {
+        validZoom = z;
+      }
+    } catch (_) {}
+    if (zoom != null && zoom.isFinite && zoom >= 3.0 && zoom <= 18.0) {
+      validZoom = zoom;
+    }
+    controller.move(target, validZoom);
+  } catch (_) {}
+}
+
+/// Widget principal do Mapa de Rotas do Passo Certo.
 class RouteMapSection extends StatefulWidget {
-  const RouteMapSection({super.key});
+  final VoidCallback? onMapTap;
+
+  const RouteMapSection({super.key, this.onMapTap});
 
   @override
   State<RouteMapSection> createState() => _RouteMapSectionState();
 }
 
-enum _LocationPermissionStatus { checking, granted, denied }
-
 class _RouteMapSectionState extends State<RouteMapSection> {
-  _LocationPermissionStatus _permissionStatus = _LocationPermissionStatus.checking;
+  _LocationPermissionStatus _permissionStatus =
+      _LocationPermissionStatus.checking;
   final MapController _mapController = MapController();
   bool _autoCenter = true;
+  bool _hasCenteredOnUser = false;
+  MapSelectionMode _selectionMode = MapSelectionMode.none;
 
   @override
   void initState() {
@@ -35,152 +74,145 @@ class _RouteMapSectionState extends State<RouteMapSection> {
     _checkAndRequestLocationPermission();
   }
 
-  /// Verifica e, se necessário, solicita permissão de localização.
-  /// Atualiza [_permissionStatus] para controlar qual UI exibir.
-  Future<void> _checkAndRequestLocationPermission() async {
-    var status = await Permission.locationWhenInUse.status;
-
-    if (status.isGranted) {
-      if (mounted) setState(() => _permissionStatus = _LocationPermissionStatus.granted);
-      return;
-    }
-
-    // Solicita ao usuário (exibe o diálogo do SO apenas na primeira vez)
-    status = await Permission.locationWhenInUse.request();
-
-    if (!mounted) return;
-    setState(() {
-      _permissionStatus = status.isGranted
-          ? _LocationPermissionStatus.granted
-          : _LocationPermissionStatus.denied;
-    });
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Abre o mapa em tela cheia via overlay animado
-  // ---------------------------------------------------------------------------
-  void _openFullScreen(BuildContext context) {
-    // Captura os BLoCs antes de abrir o diálogo (novo contexto não herda os providers)
-    final routeBloc = context.read<RoutePlanningBloc>();
-    final obstacleBloc = context.read<ObstacleBloc>();
-    final activeNavBloc = context.read<ActiveNavigationBloc>();
+  /// Verifica permissão de localização com tratamento seguro contra falhas assíncronas.
+  Future<void> _checkAndRequestLocationPermission() async {
+    try {
+      var status = await Permission.locationWhenInUse.status;
 
-    // Permite rotação ao entrar em tela cheia
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+      if (status.isGranted) {
+        if (mounted) {
+          setState(() => _permissionStatus = _LocationPermissionStatus.granted);
+        }
+        return;
+      }
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      transitionDuration: const Duration(milliseconds: 350),
-      pageBuilder: (ctx, animation, secondaryAnimation) => const SizedBox.shrink(),
-      transitionBuilder: (ctx, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.92, end: 1.0).animate(curved),
-            // Injeta os BLoCs no novo contexto do diálogo
-            child: MultiBlocProvider(
-              providers: [
-                BlocProvider.value(value: routeBloc),
-                BlocProvider.value(value: obstacleBloc),
-                BlocProvider.value(value: activeNavBloc),
-              ],
-              child: _FullScreenMapDialog(
-                permissionStatus: _permissionStatus,
-                onClose: () {
-                  Navigator.of(ctx).pop();
-                  // Restaura apenas orientação retrato ao sair
-                  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
+      status = await Permission.locationWhenInUse.request();
+
+      if (!mounted) return;
+      setState(() {
+        _permissionStatus = status.isGranted
+            ? _LocationPermissionStatus.granted
+            : _LocationPermissionStatus.denied;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _permissionStatus = _LocationPermissionStatus.granted);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // CRI-01: Escuta exclusivamente alterações na lista de obstáculos via context.select no build principal
-    final obstacles = context.select<ObstacleBloc, List<Obstacle>>((bloc) => bloc.state.obstacles);
+    final obstacles = context.select<ObstacleBloc, List<Obstacle>>(
+      (bloc) => bloc.state.obstacles,
+    );
+    final addedPlaces = context.select<AddPlaceBloc, List<Place>>(
+      (b) => b.state.newlyAddedPlaces,
+    );
 
-    return BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
-      listenWhen: (prev, curr) =>
-          prev.isActive != curr.isActive ||
-          prev.lastPosition != curr.lastPosition,
-      listener: (context, activeState) {
-        if (activeState.isActive && activeState.lastPosition != null && _autoCenter) {
-          _mapController.move(
-            LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-            _mapController.camera.zoom,
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
+          listenWhen: (prev, curr) =>
+              prev.isActive != curr.isActive ||
+              prev.lastPosition != curr.lastPosition ||
+              prev.proximityAlertObstacle != curr.proximityAlertObstacle,
+          listener: (context, activeState) {
+            if (activeState.proximityAlertObstacle != null) {
+              _showProximityAlert(context, activeState.proximityAlertObstacle!);
+            }
+            if (activeState.isActive &&
+                activeState.lastPosition != null &&
+                _autoCenter) {
+              _safeMoveMap(
+                _mapController,
+                LatLng(
+                  activeState.lastPosition!.latitude,
+                  activeState.lastPosition!.longitude,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<RoutePlanningBloc, RoutePlanningState>(
+          listenWhen: (prev, curr) {
+            final originChanged =
+                (prev.originLat != curr.originLat ||
+                    prev.originLng != curr.originLng) &&
+                curr.originLat != null &&
+                curr.originLng != null;
+            final isResetSearch =
+                prev.routes.isNotEmpty &&
+                curr.routes.isEmpty &&
+                curr.destLat == null;
+            final destinationSelected =
+                prev.destLat == null && curr.destLat != null;
+            final routesCalculated =
+                prev.routes.isEmpty && curr.routes.isNotEmpty;
+            return originChanged ||
+                isResetSearch ||
+                destinationSelected ||
+                routesCalculated;
+          },
+          listener: (context, planningState) {
+            final isResetSearch =
+                planningState.routes.isEmpty && planningState.destLat == null;
+            final destinationSelected =
+                planningState.destLat != null && planningState.routes.isEmpty;
+            final routesCalculated = planningState.routes.isNotEmpty;
+
+            if (routesCalculated) {
+              if (planningState.originLat != null &&
+                  planningState.destLat != null) {
+                try {
+                  final bounds = LatLngBounds(
+                    LatLng(planningState.originLat!, planningState.originLng!),
+                    LatLng(planningState.destLat!, planningState.destLng!),
+                  );
+                  _mapController.fitCamera(
+                    CameraFit.bounds(
+                      bounds: bounds,
+                      padding: const EdgeInsets.all(40.0),
+                    ),
+                  );
+                } catch (_) {}
+              }
+            } else if (destinationSelected) {
+              _safeMoveMap(
+                _mapController,
+                LatLng(planningState.destLat!, planningState.destLng!),
+                16.0,
+              );
+            } else if (!_hasCenteredOnUser || isResetSearch) {
+              _hasCenteredOnUser = true;
+              if (planningState.originLat != null &&
+                  planningState.originLng != null) {
+                _safeMoveMap(
+                  _mapController,
+                  LatLng(planningState.originLat!, planningState.originLng!),
+                  isResetSearch ? 16.0 : null,
+                );
+              }
+            }
+          },
+        ),
+      ],
       child: BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
         buildWhen: (previous, current) =>
             previous.routes != current.routes ||
-            previous.selectedRouteIndex != current.selectedRouteIndex,
+            previous.selectedRouteIndex != current.selectedRouteIndex ||
+            previous.originLat != current.originLat ||
+            previous.originLng != current.originLng ||
+            previous.destLat != current.destLat ||
+            previous.destLng != current.destLng,
         builder: (context, state) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ----------------------------------------------------------------
-              // Mapa compacto (preview)
-              // ----------------------------------------------------------------
-              Semantics(
-                label:
-                    'Mapa interativo exibindo o trajeto selecionado. Nível de acessibilidade codificado por cores no mapa.',
-                child: Container(
-                  height: 300,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.mintGreen.withValues(alpha: 0.5)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: _buildMapContent(state, obstacles, _mapController),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ----------------------------------------------------------------
-              // Botão "Iniciar Rota"
-              // ----------------------------------------------------------------
-              Semantics(
-                button: true,
-                label: 'Iniciar rota — expande o mapa para tela cheia',
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openFullScreen(context),
-                    icon: const Icon(Icons.navigation_rounded, size: 22),
-                    label: const Text(
-                      'Iniciar Rota',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.mintGreen,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      shadowColor: AppTheme.mintGreen.withValues(alpha: 0.4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
+          return _buildMapContent(state, obstacles, addedPlaces);
         },
       ),
     );
@@ -189,7 +221,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
   Widget _buildMapContent(
     RoutePlanningState state,
     List<Obstacle> obstacles,
-    MapController mapController,
+    List<Place> addedPlaces,
   ) {
     switch (_permissionStatus) {
       case _LocationPermissionStatus.checking:
@@ -227,7 +259,6 @@ class _RouteMapSectionState extends State<RouteMapSection> {
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    // Abre as configurações do app se a permissão foi negada permanentemente
                     final opened = await openAppSettings();
                     if (!opened && mounted) {
                       _checkAndRequestLocationPermission();
@@ -242,24 +273,19 @@ class _RouteMapSectionState extends State<RouteMapSection> {
         );
 
       case _LocationPermissionStatus.granted:
-        final polylines = state.routes.asMap().entries.map((entry) {
-          final index = entry.key;
-          final route = entry.value;
-          final isSelected = index == state.selectedRouteIndex;
-          final isRec = route.accessibilityScore >= 0.8;
-          final latLngWaypoints = route.latLngWaypoints;
-          return Polyline(
-            points: latLngWaypoints,
-            color: isSelected
-                ? (isRec ? AppTheme.mintGreen : Colors.orange)
-                : (isRec
-                    ? AppTheme.mintGreen.withValues(alpha: 0.4)
-                    : Colors.orange.withValues(alpha: 0.4)),
-            strokeWidth: isSelected ? 8 : 4,
-          );
-        }).toList();
+        final polylines = RoutePolylineLayer.buildPolylines(
+          routes: state.routes,
+          selectedRouteIndex: state.selectedRouteIndex,
+        );
 
-        final obstacleMarkers = _buildObstacleMarkers(obstacles);
+        final obstacleMarkers = ObstacleMarkersLayer.buildMarkers(
+          obstacles,
+          onTap: (obstacle) => _showObstacleDetailsSheet(context, obstacle),
+        );
+        final placeMarkers = PlaceMarkersLayer.buildMarkers(
+          addedPlaces,
+          onTap: (place) => _showDeletePlaceDialog(context, place),
+        );
 
         final List<Marker> dynamicMarkers = [];
         if (state.originLat != null && state.originLng != null) {
@@ -269,7 +295,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
               width: 40,
               height: 40,
               child: Transform.rotate(
-                angle: -0.785398, // Rotaciona 45 graus para parecer uma seta de navegação ativa inclinada (ou use sem rotação)
+                angle: -0.785398,
                 child: const Icon(
                   Icons.navigation,
                   color: AppTheme.spaceBlue,
@@ -288,7 +314,7 @@ class _RouteMapSectionState extends State<RouteMapSection> {
               height: 40,
               child: const Icon(
                 Icons.location_on,
-                color: AppTheme.mintGreen,
+                color: AppTheme.emergencyRed,
                 size: 30,
                 semanticLabel: 'Destino',
               ),
@@ -296,521 +322,549 @@ class _RouteMapSectionState extends State<RouteMapSection> {
           );
         }
 
-        return Builder(builder: (builderCtx) {
-          final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
-
-          return Stack(
-            children: [
-              FlutterMap(
-                mapController: mapController,
+        return Stack(
+          children: [
+            RepaintBoundary(
+              child: FlutterMap(
+                mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: state.originLat != null && state.originLng != null
+                  initialCenter:
+                      state.originLat != null &&
+                          state.originLng != null &&
+                          state.originLat!.isFinite &&
+                          state.originLng!.isFinite
                       ? LatLng(state.originLat!, state.originLng!)
-                      : const LatLng(-10.9472, -37.0731),
+                      : const LatLng(
+                          AppConstants.defaultMapCenterLat,
+                          AppConstants.defaultMapCenterLng,
+                        ),
                   initialZoom: 15.0,
+                  minZoom: 3.0,
+                  maxZoom: AppConstants.mapMaxZoom,
                   interactionOptions: const InteractionOptions(
                     flags: InteractiveFlag.all,
                   ),
+                  onMapEvent: (event) {
+                    if (event.source != MapEventSource.mapController &&
+                        event.source != MapEventSource.custom) {
+                      if (_autoCenter) {
+                        setState(() {
+                          _autoCenter = false;
+                        });
+                      }
+                    }
+                  },
                   onPositionChanged: (position, hasGesture) {
-                    if (hasGesture) {
+                    if (hasGesture && _autoCenter) {
                       setState(() {
                         _autoCenter = false;
                       });
                     }
                   },
+                  onTap: (tapPosition, latLng) {
+                    FocusScope.of(context).unfocus();
+                    if (_selectionMode == MapSelectionMode.obstacle) {
+                      setState(() {
+                        _selectionMode = MapSelectionMode.none;
+                      });
+                      ReportObstacleBottomSheet.show(context, latLng);
+                    } else if (_selectionMode == MapSelectionMode.place) {
+                      setState(() {
+                        _selectionMode = MapSelectionMode.none;
+                      });
+                      AddPlaceBottomSheet.show(context, latLng);
+                    } else {
+                      widget.onMapTap?.call();
+                    }
+                  },
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.passo_certo',
+                    // Tile Scaling: servidor CartoCDN serve até zoom 19 (maxNativeZoom).
+                    // Para zooms acima, o flutter_map estica digitalmente o tile do
+                    // nível 19 até mapMaxZoom da câmera — sem requisições inválidas
+                    // e sem telas cinzas. Ideal para navegação interna pedestre.
+                    maxNativeZoom: AppConstants.mapMaxNativeZoom,
+                    maxZoom: AppConstants.mapMaxZoom,
+                    tileProvider: CachedTileProvider(),
+                    keepBuffer: 2,
+                    panBuffer: 1,
+                    evictErrorTileStrategy: EvictErrorTileStrategy.dispose,
                   ),
-                  PolylineLayer(
-                    polylines: polylines,
-                  ),
+                  PolylineLayer(polylines: polylines),
                   MarkerLayer(
                     markers: [
                       ...obstacleMarkers,
+                      ...placeMarkers,
                       ...dynamicMarkers,
-                      if (activeState.isActive && activeState.lastPosition != null)
-                        Marker(
-                          point: LatLng(activeState.lastPosition!.latitude,
-                              activeState.lastPosition!.longitude),
-                          width: 40,
-                          height: 40,
-                          child: const Icon(
-                            Icons.navigation,
-                            color: AppTheme.mintGreen,
-                            size: 32,
-                            semanticLabel: 'Sua posição atual na navegação',
-                          ),
-                        ),
                     ],
                   ),
+                  const UserLocationLayer(),
                 ],
               ),
-              if (!_autoCenter && activeState.isActive)
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: FloatingActionButton.small(
-                    onPressed: () {
-                      setState(() {
-                        _autoCenter = true;
-                      });
-                      if (activeState.lastPosition != null) {
-                        mapController.move(
-                          LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-                          mapController.camera.zoom,
-                        );
-                      }
-                    },
-                    backgroundColor: Colors.white,
-                    child: const Icon(Icons.gps_not_fixed, color: AppTheme.spaceBlue),
-                  ),
-                ),
-              const Positioned(
-                bottom: 16,
-                left: 16,
-                right: 16,
-                child: MapLegend(),
-              ),
-            ],
-          );
-        });
+            ),
+
+            // Banner de Alerta de GPS Desativado
+            const _GpsDisabledBanner(),
+
+            // HUD de Ações do Mapa (FABs Empilhados)
+            MapActionButtonsHUD(
+              onAddPlacePressed: () {
+                setState(() {
+                  _selectionMode = MapSelectionMode.place;
+                });
+              },
+              onAddObstaclePressed: () {
+                setState(() {
+                  _selectionMode = MapSelectionMode.obstacle;
+                });
+              },
+              onRecenterPressed: () {
+                setState(() {
+                  _autoCenter = true;
+                });
+                final activeState = context.read<ActiveNavigationBloc>().state;
+                if (activeState.isActive && activeState.lastPosition != null) {
+                  _safeMoveMap(
+                    _mapController,
+                    LatLng(
+                      activeState.lastPosition!.latitude,
+                      activeState.lastPosition!.longitude,
+                    ),
+                  );
+                } else if (state.originLat != null && state.originLng != null) {
+                  _safeMoveMap(
+                    _mapController,
+                    LatLng(state.originLat!, state.originLng!),
+                  );
+                }
+              },
+            ),
+
+            // Barra de Instrução no Topo (Modo de Seleção)
+            MapSelectionModeBanner(
+              selectionMode: _selectionMode,
+              onCancel: () {
+                setState(() {
+                  _selectionMode = MapSelectionMode.none;
+                });
+              },
+            ),
+          ],
+        );
     }
   }
 
-  /// Converte a lista de entidades de obstáculos para Marcadores acessíveis do flutter_map
-  List<Marker> _buildObstacleMarkers(List<Obstacle> obstacles) {
-    return obstacles.map((obstacle) {
-      final IconData iconData;
-      final Color color;
-      final String semanticLabel;
+  /// Bottom sheet com detalhes completos do obstáculo.
+  void _showObstacleDetailsSheet(BuildContext context, Obstacle obstacle) {
+    final isBlocking = obstacle.severity == ObstacleSeverity.blocking;
 
-      switch (obstacle.type) {
-        case ObstacleType.pothole:
-          iconData = Icons.warning_amber_rounded;
-          color = Colors.orange;
-          semanticLabel = 'Alerta: Buraco. ${obstacle.description}';
-          break;
-        case ObstacleType.noTactilePaving:
-          iconData = Icons.do_not_disturb_on_total_silence;
-          color = Colors.blue;
-          semanticLabel = 'Alerta: Ausência de piso podotátil. ${obstacle.description}';
-          break;
-        case ObstacleType.stairs:
-          iconData = Icons.stairs_rounded;
-          color = AppTheme.emergencyRed;
-          semanticLabel = 'Alerta: Escada sem rampa. ${obstacle.description}';
-          break;
-        case ObstacleType.blockedSidewalk:
-          iconData = Icons.block_flipped;
-          color = Colors.redAccent;
-          semanticLabel = 'Alerta: Calçada bloqueada. ${obstacle.description}';
-          break;
-        case ObstacleType.other:
-          iconData = Icons.help_outline_rounded;
-          color = Colors.grey;
-          semanticLabel = 'Alerta: Obstáculo geral. ${obstacle.description}';
-          break;
-      }
+    // Labels legíveis por tipo
+    final typeLabels = {
+      ObstacleType.pothole: 'Buraco no piso',
+      ObstacleType.noTactilePaving: 'Sem piso tátil',
+      ObstacleType.stairs: 'Escada',
+      ObstacleType.blockedSidewalk: 'Calçada bloqueada',
+      ObstacleType.other: 'Outro',
+    };
+    final typeLabel = typeLabels[obstacle.type] ?? 'Desconhecido';
+    final severityColor = isBlocking
+        ? const Color(0xFFD32F2F)
+        : const Color(0xFFFBC02D);
+    final severityLabel = isBlocking ? 'Bloqueio' : 'Aviso';
+    final severityIcon = isBlocking ? Icons.block : Icons.priority_high;
 
-      return Marker(
-        point: LatLng(obstacle.latitude, obstacle.longitude),
-        width: 36,
-        height: 36,
-        child: Semantics(
-          label: semanticLabel,
-          button: false,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                )
-              ],
-              border: Border.all(color: color, width: 2),
-            ),
-            child: Icon(
-              iconData,
-              color: color,
-              size: 20,
-            ),
+    // Formata a data de reporte
+    final dt = obstacle.reportedAt.toLocal();
+    final dateStr =
+        '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}  ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
-        ),
-      );
-    }).toList();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// _FullScreenMapDialog — diálogo que ocupa toda a tela
-// ---------------------------------------------------------------------------
-class _FullScreenMapDialog extends StatefulWidget {
-  final _LocationPermissionStatus permissionStatus;
-  final VoidCallback onClose;
-
-  const _FullScreenMapDialog({
-    required this.permissionStatus,
-    required this.onClose,
-  });
-
-  @override
-  State<_FullScreenMapDialog> createState() => _FullScreenMapDialogState();
-}
-
-class _FullScreenMapDialogState extends State<_FullScreenMapDialog> {
-  final MapController _mapController = MapController();
-  bool _autoCenter = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final obstacles =
-        context.select<ObstacleBloc, List<Obstacle>>((bloc) => bloc.state.obstacles);
-
-    return BlocListener<ActiveNavigationBloc, ActiveNavigationState>(
-      listenWhen: (prev, curr) =>
-          prev.isActive != curr.isActive ||
-          prev.lastPosition != curr.lastPosition,
-      listener: (context, activeState) {
-        if (activeState.isActive && activeState.lastPosition != null && _autoCenter) {
-          _mapController.move(
-            LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-            _mapController.camera.zoom,
-          );
-        }
-      },
-      child: BlocBuilder<RoutePlanningBloc, RoutePlanningState>(
-        buildWhen: (previous, current) =>
-            previous.routes != current.routes ||
-            previous.selectedRouteIndex != current.selectedRouteIndex,
-        builder: (context, state) {
-          final polylines = state.routes.asMap().entries.map((entry) {
-            final index = entry.key;
-            final route = entry.value;
-            final isSelected = index == state.selectedRouteIndex;
-            final isRec = route.accessibilityScore >= 0.8;
-            return Polyline(
-              points: route.latLngWaypoints,
-              color: isSelected
-                  ? (isRec ? AppTheme.mintGreen : Colors.orange)
-                  : (isRec
-                      ? AppTheme.mintGreen.withValues(alpha: 0.4)
-                      : Colors.orange.withValues(alpha: 0.4)),
-              strokeWidth: isSelected ? 10 : 5,
-            );
-          }).toList();
-
-          final obstacleMarkers = _buildObstacleMarkers(obstacles);
-
-          final List<Marker> dynamicMarkers = [];
-          if (state.originLat != null && state.originLng != null) {
-            dynamicMarkers.add(
-              Marker(
-                point: LatLng(state.originLat!, state.originLng!),
-                width: 48,
-                height: 48,
-                child: Transform.rotate(
-                  angle: -0.785398,
-                  child: const Icon(
-                    Icons.navigation,
-                    color: AppTheme.spaceBlue,
-                    size: 36,
-                    semanticLabel: 'Origem (Sua Localização)',
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Puxador
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-            );
-          }
-          if (state.destLat != null && state.destLng != null) {
-            dynamicMarkers.add(
-              Marker(
-                point: LatLng(state.destLat!, state.destLng!),
-                width: 48,
-                height: 48,
-                child: const Icon(
-                  Icons.location_on,
-                  color: AppTheme.mintGreen,
-                  size: 36,
-                  semanticLabel: 'Destino',
-                ),
-              ),
-            );
-          }
+                const SizedBox(height: 16),
 
-          return PopScope(
-            canPop: true,
-            onPopInvokedWithResult: (didPop, result) {
-              if (didPop) {
-                SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-              }
-            },
-            child: Material(
-              color: Colors.black,
-              child: Builder(builder: (builderCtx) {
-                final activeState = builderCtx.watch<ActiveNavigationBloc>().state;
-
-                return Stack(
+                // Tipo + severidade
+                Row(
                   children: [
-                    // --------------------------------------------------------
-                    // Mapa ocupa 100% da tela
-                    // --------------------------------------------------------
-                    FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: state.originLat != null && state.originLng != null
-                            ? LatLng(state.originLat!, state.originLng!)
-                            : const LatLng(-10.9472, -37.0731),
-                        initialZoom: 15.0,
-                        interactionOptions: const InteractionOptions(
-                          flags: InteractiveFlag.all,
-                        ),
-                        onPositionChanged: (position, hasGesture) {
-                          if (hasGesture) {
-                            setState(() {
-                              _autoCenter = false;
-                            });
-                          }
-                        },
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.passo_certo',
-                        ),
-                        PolylineLayer(polylines: polylines),
-                        MarkerLayer(
-                          markers: [
-                            ...obstacleMarkers,
-                            ...dynamicMarkers,
-                            if (activeState.isActive && activeState.lastPosition != null)
-                              Marker(
-                                point: LatLng(activeState.lastPosition!.latitude,
-                                    activeState.lastPosition!.longitude),
-                                width: 48,
-                                height: 48,
-                                child: const Icon(
-                                  Icons.navigation,
-                                  color: AppTheme.mintGreen,
-                                  size: 36,
-                                  semanticLabel: 'Sua posição atual na navegação',
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    // --------------------------------------------------------
-                    // Legenda na parte inferior
-                    // --------------------------------------------------------
-                    const Positioned(
-                      bottom: 32,
-                      left: 16,
-                      right: 16,
-                      child: MapLegend(),
-                    ),
-
-                    if (!_autoCenter && activeState.isActive)
-                      Positioned(
-                        bottom: 100,
-                        right: 16,
-                        child: FloatingActionButton.small(
-                          onPressed: () {
-                            setState(() {
-                              _autoCenter = true;
-                            });
-                            if (activeState.lastPosition != null) {
-                              _mapController.move(
-                                LatLng(activeState.lastPosition!.latitude, activeState.lastPosition!.longitude),
-                                _mapController.camera.zoom,
-                              );
-                            }
-                          },
-                          backgroundColor: Colors.white,
-                          child: const Icon(Icons.gps_not_fixed, color: AppTheme.spaceBlue),
-                        ),
+                      decoration: BoxDecoration(
+                        color: severityColor,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-
-                    // --------------------------------------------------------
-                    // Botão fechar (canto superior esquerdo)
-                    // --------------------------------------------------------
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 12,
-                      left: 16,
-                      child: Semantics(
-                        button: true,
-                        label: 'Fechar mapa em tela cheia',
-                        child: GestureDetector(
-                          onTap: widget.onClose,
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: AppTheme.spaceBlue,
-                              size: 22,
-                            ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            severityIcon,
+                            color: isBlocking ? Colors.white : Colors.black,
+                            size: 16,
                           ),
-                        ),
-                      ),
-                    ),
-
-                    // --------------------------------------------------------
-                    // Rótulo "Navegação em Tela Cheia" no topo
-                    // --------------------------------------------------------
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top + 16,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.spaceBlue.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Passo Certo — Navegação',
+                          const SizedBox(width: 4),
+                          Text(
+                            severityLabel,
                             style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              color: isBlocking ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        typeLabel,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A202C),
                         ),
                       ),
                     ),
                   ],
-                );
-              }),
+                ),
+                const SizedBox(height: 14),
+
+                // Descrição
+                const Text(
+                  'Descrição',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF718096),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  obstacle.description.isNotEmpty
+                      ? obstacle.description
+                      : 'Sem descrição informada.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF2D3748),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Data
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: Color(0xFFA0AEC0),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Reportado em $dateStr',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFA0AEC0),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Botão remover
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD32F2F),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text(
+                      'Remover Obstáculo',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    onPressed: () {
+                      Navigator.of(sheetCtx).pop();
+                      _confirmDeleteObstacle(context, obstacle);
+                    },
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        );
+      },
+    );
+  }
+
+  /// Diálogo de confirmação para remover um obstáculo.
+  void _confirmDeleteObstacle(BuildContext context, Obstacle obstacle) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Confirmar remoção?',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: const Text(
+          'Este obstáculo será marcado como resolvido e sumirá do mapa.',
+          style: TextStyle(fontSize: 13, color: Color(0xFF718096)),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF718096)),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<ObstacleBloc>().add(
+                DeleteObstacleEvent(obstacleId: obstacle.id),
+              );
+            },
+            child: const Text('Remover'),
+          ),
+        ],
       ),
     );
   }
 
-  List<Marker> _buildObstacleMarkers(List<Obstacle> obstacles) {
-    return obstacles.map((obstacle) {
-      final IconData iconData;
-      final Color color;
-      final String semanticLabel;
-
-      switch (obstacle.type) {
-        case ObstacleType.pothole:
-          iconData = Icons.warning_amber_rounded;
-          color = Colors.orange;
-          semanticLabel = 'Alerta: Buraco. ${obstacle.description}';
-          break;
-        case ObstacleType.noTactilePaving:
-          iconData = Icons.do_not_disturb_on_total_silence;
-          color = Colors.blue;
-          semanticLabel = 'Alerta: Ausência de piso podotátil. ${obstacle.description}';
-          break;
-        case ObstacleType.stairs:
-          iconData = Icons.stairs_rounded;
-          color = AppTheme.emergencyRed;
-          semanticLabel = 'Alerta: Escada sem rampa. ${obstacle.description}';
-          break;
-        case ObstacleType.blockedSidewalk:
-          iconData = Icons.block_flipped;
-          color = Colors.redAccent;
-          semanticLabel = 'Alerta: Calçada bloqueada. ${obstacle.description}';
-          break;
-        case ObstacleType.other:
-          iconData = Icons.help_outline_rounded;
-          color = Colors.grey;
-          semanticLabel = 'Alerta: Obstáculo geral. ${obstacle.description}';
-          break;
-      }
-
-      return Marker(
-        point: LatLng(obstacle.latitude, obstacle.longitude),
-        width: 40,
-        height: 40,
-        child: Semantics(
-          label: semanticLabel,
-          button: false,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                )
-              ],
-              border: Border.all(color: color, width: 2),
-            ),
-            child: Icon(iconData, color: color, size: 22),
+  /// Diálogo de confirmação para apagar um local.
+  void _showDeletePlaceDialog(BuildContext context, Place place) {
+    if (place.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Este local ainda não foi sincronizado com o servidor.',
           ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
         ),
       );
-    }).toList();
-  }
-}
-
-// ---------------------------------------------------------------------------
-// MapLegend — legenda reutilizável
-// ---------------------------------------------------------------------------
-class MapLegend extends StatelessWidget {
-  const MapLegend({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const BaseCard(
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _LegendItem(color: AppTheme.mintGreen, label: 'Boa'),
-          _LegendItem(color: Colors.orange, label: 'Regular'),
-          _LegendItem(color: AppTheme.emergencyRed, label: 'Atenção'),
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(
+              Icons.delete_outline,
+              color: Color(0xFFD32F2F),
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Remover "${place.name}"?',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (place.category.isNotEmpty)
+              Text(
+                'Categoria: ${place.category}',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF4A5568)),
+              ),
+            const SizedBox(height: 8),
+            const Text(
+              'Este local será apagado permanentemente do mapa.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF718096)),
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFF718096)),
+            ),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.check, size: 16),
+            label: const Text('Remover'),
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AddPlaceBloc>().add(
+                DeletePlaceEvent(placeId: place.id!),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class _LegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _LegendItem({
-    required this.color,
-    required this.label,
-  });
+/// Banner amigável exibido quando o sinal ou serviço de GPS do aparelho é desligado durante a navegação.
+class _GpsDisabledBanner extends StatelessWidget {
+  const _GpsDisabledBanner();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(backgroundColor: color, radius: 6),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        ),
-      ],
+    return BlocBuilder<ActiveNavigationBloc, ActiveNavigationState>(
+      buildWhen: (prev, curr) => prev.isGpsDisabled != curr.isGpsDisabled,
+      builder: (context, state) {
+        if (!state.isGpsDisabled) return const SizedBox.shrink();
+
+        return Positioned(
+          top: 60,
+          left: 16,
+          right: 16,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            color: AppTheme.emergencyRed,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.location_off, color: Colors.white, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Sinal de GPS Perdido! Por favor, ative a localização.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
+}
+
+void _showProximityAlert(BuildContext context, Obstacle obs) {
+  HapticFeedback.heavyImpact();
+  Future.delayed(const Duration(milliseconds: 300), () {
+    if (context.mounted) {
+      HapticFeedback.heavyImpact();
+    }
+  });
+
+  final isBlocking = obs.severity == ObstacleSeverity.blocking;
+  final bgColor = isBlocking
+      ? const Color(0xFFD32F2F)
+      : const Color(0xFFFBC02D);
+  final textColor = isBlocking ? Colors.white : Colors.black;
+
+  final banner = MaterialBanner(
+    content: Text(
+      isBlocking ? 'PERIGO A FRENTE: ' : 'ATENÇÃO A FRENTE: ',
+      style: TextStyle(
+        color: textColor,
+        fontWeight: FontWeight.w900,
+        fontSize: 16,
+      ),
+    ),
+    leading: Icon(
+      isBlocking ? Icons.block : Icons.priority_high,
+      color: textColor,
+      size: 36,
+    ),
+    backgroundColor: bgColor,
+    elevation: 0,
+    actions: [
+      TextButton(
+        onPressed: () {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+          }
+        },
+        child: Text(
+          'OK',
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w900),
+        ),
+      ),
+    ],
+  );
+
+  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+  ScaffoldMessenger.of(context).showMaterialBanner(banner);
+
+  Future.delayed(const Duration(seconds: 4), () {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    }
+  });
 }

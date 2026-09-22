@@ -4,8 +4,8 @@ class BaseCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
-  final VoidCallback? onTap; 
-  final String? semanticLabel; 
+  final VoidCallback? onTap;
+  final String? semanticLabel;
 
   final Color? backgroundColor;
   final Gradient? gradient;
@@ -32,7 +32,9 @@ class BaseCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     final cardDecoration = BoxDecoration(
-      color: gradient == null ? (backgroundColor ?? theme.colorScheme.surface) : null,
+      color: gradient == null
+          ? (backgroundColor ?? theme.colorScheme.surface)
+          : null,
       gradient: gradient,
       borderRadius: BorderRadius.circular(16),
       border: border,

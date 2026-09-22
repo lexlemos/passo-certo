@@ -75,7 +75,13 @@ class CommunityState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [allPosts, filteredPosts, selectedCategory, isLoading, postAddedSuccess];
+  List<Object?> get props => [
+    allPosts,
+    filteredPosts,
+    selectedCategory,
+    isLoading,
+    postAddedSuccess,
+  ];
 }
 
 // --- BLOC ---
@@ -144,11 +150,13 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
   ];
 
   CommunityBloc()
-      : super(CommunityState(
+    : super(
+        CommunityState(
           allPosts: _mockPosts,
           filteredPosts: _mockPosts,
           selectedCategory: PostCategory.all,
-        )) {
+        ),
+      ) {
     on<LoadPostsEvent>(_onLoad);
     on<FilterByCategoryEvent>(_onFilter);
     on<ToggleLikeEvent>(_onToggleLike);
@@ -164,10 +172,9 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
         ? state.allPosts
         : state.allPosts.where((p) => p.category == event.category).toList();
 
-    emit(state.copyWith(
-      selectedCategory: event.category,
-      filteredPosts: filtered,
-    ));
+    emit(
+      state.copyWith(selectedCategory: event.category, filteredPosts: filtered),
+    );
   }
 
   void _onToggleLike(ToggleLikeEvent event, Emitter<CommunityState> emit) {
@@ -210,11 +217,13 @@ class CommunityBloc extends Bloc<CommunityEvent, CommunityState> {
         ? updated
         : updated.where((p) => p.category == state.selectedCategory).toList();
 
-    emit(state.copyWith(
-      allPosts: updated,
-      filteredPosts: filtered,
-      isLoading: false,
-      postAddedSuccess: true,
-    ));
+    emit(
+      state.copyWith(
+        allPosts: updated,
+        filteredPosts: filtered,
+        isLoading: false,
+        postAddedSuccess: true,
+      ),
+    );
   }
 }

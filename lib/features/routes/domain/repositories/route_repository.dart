@@ -7,6 +7,6 @@ abstract class RouteRepository {
     required double originLng,
     required double destLat,
     required double destLng,
-    List<Obstacle>? obstaclesToAvoid,
+    List<Obstacle>? blockingObstacles,
   });
 }

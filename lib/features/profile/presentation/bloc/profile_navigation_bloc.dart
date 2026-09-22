@@ -1,5 +1,7 @@
-import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+
+import '../../../routes/domain/entities/navigation_preferences.dart';
 
 // --- EVENTS ---
 abstract class ProfileNavigationEvent {}
@@ -78,18 +80,20 @@ class ProfileNavigationState extends Equatable {
 
   @override
   List<Object?> get props => [
-        voiceNavigation,
-        highContrast,
-        textSize,
-        avoidStairs,
-        extraCrossingTime,
-        soundTrafficSignals,
-        hasError,
-      ];
+    voiceNavigation,
+    highContrast,
+    textSize,
+    avoidStairs,
+    extraCrossingTime,
+    soundTrafficSignals,
+    hasError,
+  ];
 }
 
 // --- BLOC ---
-class ProfileNavigationBloc extends HydratedBloc<ProfileNavigationEvent, ProfileNavigationState> {
+class ProfileNavigationBloc
+    extends HydratedBloc<ProfileNavigationEvent, ProfileNavigationState>
+    implements NavigationPreferencesReader {
   ProfileNavigationBloc() : super(const ProfileNavigationState()) {
     on<LoadNavigationSettingsEvent>(_onLoadNavigationSettings);
     on<ToggleVoiceNavigationEvent>(_onToggleVoiceNavigation);
@@ -99,6 +103,14 @@ class ProfileNavigationBloc extends HydratedBloc<ProfileNavigationEvent, Profile
     on<ToggleExtraCrossingTimeEvent>(_onToggleExtraCrossingTime);
     on<ToggleSoundTrafficSignalsEvent>(_onToggleSoundTrafficSignals);
   }
+
+  @override
+  NavigationPreferences get current => NavigationPreferences(
+    avoidStairs: state.avoidStairs,
+    requiresTactilePaving:
+        false, // Pode ser vinculado a outra preferência depois se necessário
+    voiceNavigation: state.voiceNavigation,
+  );
 
   void _onLoadNavigationSettings(
     LoadNavigationSettingsEvent event,

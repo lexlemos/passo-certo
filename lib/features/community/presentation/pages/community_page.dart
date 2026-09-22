@@ -70,20 +70,29 @@ class _CommunityView extends StatelessWidget {
                         height: 40,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [AppColors.tealPrimary, AppColors.mintGreen],
+                            colors: [
+                              AppColors.tealPrimary,
+                              AppColors.mintGreen,
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.tealPrimary.withValues(alpha: 0.35),
+                              color: AppColors.tealPrimary.withValues(
+                                alpha: 0.35,
+                              ),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 22),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
                     ),
                   ),
@@ -146,7 +155,7 @@ class _CategoryFilterBar extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, i) {
               final cat = categories[i];
               final selected = cat == state.selectedCategory;
@@ -157,23 +166,32 @@ class _CategoryFilterBar extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   child: GestureDetector(
-                    onTap: () => context.read<CommunityBloc>().add(FilterByCategoryEvent(cat)),
+                    onTap: () => context.read<CommunityBloc>().add(
+                      FilterByCategoryEvent(cat),
+                    ),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: selected ? AppColors.spaceBlue : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: selected ? AppColors.spaceBlue : const Color(0xFFE2E8F0),
+                          color: selected
+                              ? AppColors.spaceBlue
+                              : const Color(0xFFE2E8F0),
                           width: 1,
                         ),
                         boxShadow: selected
                             ? [
                                 BoxShadow(
-                                  color: AppColors.spaceBlue.withValues(alpha: 0.2),
+                                  color: AppColors.spaceBlue.withValues(
+                                    alpha: 0.2,
+                                  ),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2),
-                                )
+                                ),
                               ]
                             : [],
                       ),
